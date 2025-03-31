@@ -220,6 +220,10 @@ if [[ ! -d "$FOUNT_DIR/node_modules" || ($# -gt 0 && $1 = 'init') ]]; then
 fi
 
 run() {
+	if [[ $(id -u) -eq 0 ]]; then
+		echo "Not recommended: Running fount as root grants full system access for all fount parts."
+		echo "Unless you know what you are doing, it is recommended to run fount as a common user."
+	fi
 	if [[ $# -gt 0 && $1 = 'debug' ]]; then
 		newargs=("${@:2}")
 		deno run --allow-scripts --allow-all --inspect-brk "$FOUNT_DIR/src/server/index.mjs" "${newargs[@]}"
