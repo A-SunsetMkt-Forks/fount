@@ -186,6 +186,24 @@ if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 	Invoke-RestMethod https://deno.land/install.ps1 | Invoke-Expression
 	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 	if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
+		Write-Host "Deno installation failed, attempting auto installing to fount's path folder..."
+		$url = "https://github.com/denoland/deno/releases/latest/download/deno-" + (if ($IsWindows) {
+			"x86_64-pc-windows-msvc.zip"
+		} elseif ($IsMacOS) {
+			if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+				"aarch64-apple-darwin.zip"
+			}
+			else {
+				"x86_64-apple-darwin.zip"
+			}
+		} else {
+			"x86_64-unknown-linux-gnu.zip"
+		})
+		Invoke-WebRequest -Uri $url -OutFile "$env:TEMP/deno.zip"
+		Expand-Archive -Path "$env:TEMP/deno.zip" -DestinationPath "$FOUNT_DIR/path"
+		Remove-Item -Path "$env:TEMP/deno.zip" -Force
+	}
+	if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 		Write-Host "Deno missing, you cant run fount without deno"
 		exit 1
 	}
@@ -196,7 +214,23 @@ if ($IN_DOCKER) {
 	Write-Host "Skipping deno upgrade in Docker environment"
 }
 else {
-	deno upgrade -q
+	$deno_ver = deno -V
+	if (!$deno_ver) {
+		deno upgrade -q
+		$deno_ver = deno -V
+	}
+	if (!$deno_ver) {
+		Write-Error "For some reason deno doesn't work, you may need to join https://discord.gg/deno to get support" -ErrorAction Ignore
+		exit
+	}
+	$deno_update_channel = "stable"
+	if ($deno_ver.Contains("+")) {
+		$deno_update_channel = "canary"
+	}
+	elseif ($deno_ver.Contains("-rc")) {
+		$deno_update_channel = "rc"
+	}
+	deno upgrade -q $deno_update_channel
 }
 
 deno -V

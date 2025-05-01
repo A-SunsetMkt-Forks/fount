@@ -200,7 +200,24 @@ if ! command -v deno &> /dev/null; then #最终检查
 	exit 1
 fi
 
-deno upgrade -q
+if [ $IN_DOCKER -eq 1 ]; then
+	echo "Skipping deno upgrade in Docker environment"
+else
+	# 使用 run_deno 来获取 Deno 版本信息
+	deno_version_before=$(deno -V 2>&1)
+	deno_upgrade_channel="stable"
+	if [[ "$deno_version_before" == *"+"* ]]; then
+		deno_upgrade_channel="canary"
+	elif [[ "$deno_version_before" == *"-rc"* ]]; then
+		deno_upgrade_channel="rc"
+	fi
+	if [[ -z "$deno_version_before" ]]; then
+		echo "Error: Could not determine current Deno version." >&2
+	else
+		deno upgrade -q $deno_upgrade_channel
+	fi
+fi
+
 deno -V #显示版本信息
 
 # ------------------------
