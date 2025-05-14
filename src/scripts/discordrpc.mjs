@@ -1,6 +1,5 @@
 import DiscordRPC from 'npm:fixed-discord-rpc'
 import { in_docker, in_termux } from './env.mjs'
-import process from 'node:process'
 
 let rpc
 
