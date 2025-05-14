@@ -106,7 +106,7 @@ Fount 为未来而建。源自充满活力社区的新功能，将被欣然接�
 
 ## 架构：创新的基石
 
-Fount 构建于一个强大且可扩展的架构之上，兼顾性能与可维护性。后端充分利用 [Deno](https://deno.com/) 的强大与迅捷，这是一个安全且现代的 JavaScript 和 TypeScript 运行时。我们采用 [Express](https://expressjs.com/) 框架来实现高效的路由和 API 请求处理。前端则由 HTML、CSS 和 JavaScript 混合精心打造，提供一个赏心悦目且直观的用户界面。这种架构允许快速迭代和新功能的无缝集成，同时保持稳定的坚实基础。Fount 拥抱开源精神，欢迎贡献与协作。
+Fount 构建于一个强大且可扩展的架构之上，兼顾性能与可维护性。后端充分利用 [Bun](https://Bun.sh/) 的强大与迅捷，这是一个安全且现代的 JavaScript 和 TypeScript 运行时。我们采用 [Express](https://expressjs.com/) 框架来实现高效的路由和 API 请求处理。前端则由 HTML、CSS 和 JavaScript 混合精心打造，提供一个赏心悦目且直观的用户界面。这种架构允许快速迭代和新功能的无缝集成，同时保持稳定的坚实基础。Fount 拥抱开源精神，欢迎贡献与协作。
 
 ### 沉浸于特色功能的世界
 

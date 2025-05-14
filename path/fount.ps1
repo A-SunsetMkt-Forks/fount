@@ -180,68 +180,96 @@ else {
 	Write-Host "Git is not installed, skipping git pull"
 }
 
-# Deno 安装
-if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
-	Write-Host "Deno missing, auto installing..."
-	Invoke-RestMethod https://deno.land/install.ps1 | Invoke-Expression
+# Bun 安装
+if (!(Get-Command bun -ErrorAction SilentlyContinue)) {
+	Write-Host "Bun missing, auto installing..."
+	Invoke-RestMethod https://bun.sh/install.ps1 | Invoke-Expression
 	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-	if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
-		Write-Host "Deno installation failed, attempting auto installing to fount's path folder..."
-		$url = "https://github.com/denoland/deno/releases/latest/download/deno-" + (if ($IsWindows) {
-			"x86_64-pc-windows-msvc.zip"
+	if (!(Get-Command bun -ErrorAction SilentlyContinue)) {
+		Write-Host "Bun installation failed, attempting auto installing to fount's path folder..."
+		$url = "https://github.com/oven-sh/bun/releases/latest/download/bun-" + (if ($IsWindows) {
+			"windows-x64-baseline.zip"
 		} elseif ($IsMacOS) {
 			if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-				"aarch64-apple-darwin.zip"
+				"darwin-aarch64.zip"
 			}
 			else {
-				"x86_64-apple-darwin.zip"
+				"darwin-x64.zip"
 			}
 		} else {
-			"x86_64-unknown-linux-gnu.zip"
+			if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+				"linux-aarch64.zip"
+			}
+			else {
+				"linux-x64-baseline.zip"
+			}
 		})
-		Invoke-WebRequest -Uri $url -OutFile "$env:TEMP/deno.zip"
-		Expand-Archive -Path "$env:TEMP/deno.zip" -DestinationPath "$FOUNT_DIR/path"
-		Remove-Item -Path "$env:TEMP/deno.zip" -Force
+		Invoke-WebRequest -Uri $url -OutFile "$env:TEMP/bun.zip"
+		Expand-Archive -Path "$env:TEMP/bun.zip" -DestinationPath "$FOUNT_DIR/path"
+		Remove-Item -Path "$env:TEMP/bun.zip" -Force
 	}
-	if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
-		Write-Host "Deno missing, you cant run fount without deno"
+	if (!(Get-Command bun -ErrorAction SilentlyContinue)) {
+		Write-Host "Bun missing, you cant run fount without bun"
 		exit 1
 	}
 }
 
-# Deno 更新
+# Bun 更新
 if ($IN_DOCKER) {
-	Write-Host "Skipping deno upgrade in Docker environment"
+	Write-Host "Skipping bun upgrade in Docker environment"
 }
 else {
-	$deno_ver = deno -V
-	if (!$deno_ver) {
-		deno upgrade -q
-		$deno_ver = deno -V
+	$bun_ver = bun -v
+	if (!$bun_ver) {
+		bun upgrade
+		$bun_ver = bun -v
 	}
-	if (!$deno_ver) {
-		Write-Error "For some reason deno doesn't work, you may need to join https://discord.gg/deno to get support" -ErrorAction Ignore
+	if (!$bun_ver) {
+		Write-Error "For some reason bun doesn't work, you may need to join https://discord.com/invite/CXdq2DP29u to get support" -ErrorAction Ignore
 		exit
 	}
-	$deno_update_channel = "stable"
-	if ($deno_ver.Contains("+")) {
-		$deno_update_channel = "canary"
+	$bun_update_channel = ""
+	if ($bun_ver.Contains("+")) {
+		$bun_update_channel = "--canary"
 	}
-	elseif ($deno_ver.Contains("-rc")) {
-		$deno_update_channel = "rc"
-	}
-	deno upgrade -q $deno_update_channel
+	bun upgrade $bun_update_channel
 }
 
-deno -V
+"bun " + (bun -v)
+
+function isRoot {
+	if ($IsWindows) {
+		([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+	}
+	else {
+		$UID -eq 0
+	}
+}
+function run {
+	if (isRoot) {
+		Write-Warning "Not Recommended: Running fount as root grants full system access for all fount parts."
+		Write-Warning "Unless you know what you are doing, it is recommended to run fount as a common user."
+	}
+	if ($args.Count -gt 0 -and $args[0] -eq 'debug') {
+		$newargs = $args[1..$args.Count]
+		bun run --inspect-brk --config="$FOUNT_DIR/bunfig.toml" --install=force --prefer-latest "$FOUNT_DIR/src/server/index.mjs" @newargs
+	}
+	else {
+		bun run --config="$FOUNT_DIR/bunfig.toml" --install=force --prefer-latest "$FOUNT_DIR/src/server/index.mjs" @args
+	}
+	if ($IsWindows) {
+		Get-Process tray_windows_release | Where-Object { $_.CPU -gt 0.5 } | Stop-Process
+	}
+}
 
 # 安装依赖
-if (!(Test-Path -Path "$FOUNT_DIR/node_modules") -or ($args.Count -gt 0 -and $args[0] -eq 'init')) {
+if (!(Test-Path -Path "$FOUNT_DIR/data/config.json") -or ($args.Count -gt 0 -and $args[0] -eq 'init')) {
 	Write-Host "Installing dependencies..."
-	deno install --reload --allow-scripts --allow-all --node-modules-dir=auto --entrypoint "$FOUNT_DIR/src/server/index.mjs"
+	run shutdown
 	Write-Host "======================================================" -ForegroundColor Green
 	Write-Warning "DO NOT install any untrusted fount parts on your system, they can do ANYTHING."
 	Write-Host "======================================================" -ForegroundColor Green
+
 	# 生成 桌面快捷方式
 	if ($IsWindows) {
 		$shell = New-Object -ComObject WScript.Shell
@@ -261,30 +289,6 @@ if (!(Test-Path -Path "$FOUNT_DIR/node_modules") -or ($args.Count -gt 0 -and $ar
 }
 
 # 执行 fount
-function isRoot {
-	if ($IsWindows) {
-		([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-	}
-	else {
-		$UID -eq 0
-	}
-}
-function run {
-	if (isRoot) {
-		Write-Warning "Not Recommended: Running fount as root grants full system access for all fount parts."
-		Write-Warning "Unless you know what you are doing, it is recommended to run fount as a common user."
-	}
-	if ($args.Count -gt 0 -and $args[0] -eq 'debug') {
-		$newargs = $args[1..$args.Count]
-		deno run --allow-scripts --allow-all --inspect-brk "$FOUNT_DIR/src/server/index.mjs" @newargs
-	}
-	else {
-		deno run --allow-scripts --allow-all "$FOUNT_DIR/src/server/index.mjs" @args
-	}
-	if ($IsWindows) {
-		Get-Process tray_windows_release | Where-Object { $_.CPU -gt 0.5 } | Stop-Process
-	}
-}
 if ($args.Count -gt 0 -and $args[0] -eq 'geneexe') {
 	$exepath = $args[1]
 	if (!$exepath) { $exepath = "fount.exe" }

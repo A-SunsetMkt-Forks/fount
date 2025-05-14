@@ -30,8 +30,6 @@ export function StartRPC(
 		instance: false,
 	}
 ) {
-	if (process.platform === 'win32') return // https://github.com/denoland/deno/issues/28332
-
 	if (in_docker || in_termux) return
 
 	StopRPC()
