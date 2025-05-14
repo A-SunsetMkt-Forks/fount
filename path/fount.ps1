@@ -219,10 +219,10 @@ if ($IN_DOCKER) {
 	Write-Host "Skipping bun upgrade in Docker environment"
 }
 else {
-	$bun_ver = bun -v
+	$bun_ver = bun --revision
 	if (!$bun_ver) {
 		bun upgrade
-		$bun_ver = bun -v
+		$bun_ver = bun --revision
 	}
 	if (!$bun_ver) {
 		Write-Error "For some reason bun doesn't work, you may need to join https://discord.com/invite/CXdq2DP29u to get support" -ErrorAction Ignore
@@ -235,7 +235,7 @@ else {
 	bun upgrade $bun_update_channel
 }
 
-"bun " + (bun -v)
+"bun " + (bun --revision)
 
 function isRoot {
 	if ($IsWindows) {

@@ -298,7 +298,7 @@ if [ $IN_DOCKER -eq 1 ]; then
 	echo "Skipping bun upgrade in Docker environment"
 else
 	# 使用 run_bun 来获取 Bun 版本信息
-	bun_version_before=$(run_bun -V 2>&1)
+	bun_version_before=$(run_bun --revision 2>&1)
 	bun_upgrade_channel=""
 	if [[ "$bun_version_before" == *"+"* ]]; then
 		bun_upgrade_channel="--canary"
@@ -307,7 +307,7 @@ else
 		echo "Error: Could not determine current Bun version." >&2
 	else
 		run_bun upgrade $bun_upgrade_channel &> /dev/null
-		bun_version_after=$(run_bun -V 2>&1)
+		bun_version_after=$(run_bun --revision 2>&1)
 
 		# 检查是否需要重新 patch bun
 		if [[ "$bun_version_before" != "$bun_version_after" && $IN_TERMUX -eq 1 ]]; then
@@ -317,7 +317,7 @@ else
 fi
 
 # 使用 run_bun 来获取 Bun 版本信息，并输出
-run_bun -v
+run_bun --revision
 
 if [[ ! -d "$FOUNT_DIR/data" || ($# -gt 0 && $1 = 'init') ]]; then
 	echo "Installing dependencies..."
