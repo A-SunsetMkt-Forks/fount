@@ -10,9 +10,9 @@ plugin({
 		)
 		// https://deno.land/x/canvas/mod.ts -> canvas
 		build.onResolve(
-			{ filter: /https:\/\/deno\.land\/x\/(.+?)\// },
+			{ filter: /\/\/deno\.land\/x\/(.+?)\//, namespace: 'https' },
 			(args) => {
-				const path = args.path.replace('https://deno.land/x/', '').split('/')[0]
+				const path = args.path.replace('//deno.land/x/', '').split('/')[0]
 				return { path }
 			}
 		)
