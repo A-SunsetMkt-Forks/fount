@@ -4,3 +4,5 @@
 /node_modules
 /path/bun
 /path/bun.exe
+/package.json
+/bun.lock
