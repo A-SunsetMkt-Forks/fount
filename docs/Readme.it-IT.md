@@ -107,7 +107,7 @@ Fount è costruito per il futuro. Nuove funzionalità, scaturite da una comunit�
 
 ## Architettura: Le fondamenta dell'innovazione
 
-Fount è edificato su un'architettura robusta e scalabile, bilanciando performance e manutenibilità. Il backend sfrutta la potenza e la velocità di [Deno](https://deno.com/), un runtime JavaScript e TypeScript sicuro e moderno. Adottiamo il framework [Express](https://expressjs.com/) per una gestione efficiente del routing e delle richieste API. Il frontend, invece, è stato minuziosamente plasmato da un connubio di HTML, CSS e JavaScript, offrendo un'interfaccia utente gradevole alla vista e intuitiva. Tale architettura consente iterazioni rapide e l'integrazione fluida di nuove funzionalità, pur mantenendo una solida base di stabilità. Fount abbraccia lo spirito open-source, accogliendo contributi e collaborazione.
+Fount è edificato su un'architettura robusta e scalabile, bilanciando performance e manutenibilità. Il backend sfrutta la potenza e la velocità di [Bun](https://Bun.sh/), un runtime JavaScript e TypeScript sicuro e moderno. Adottiamo il framework [Express](https://expressjs.com/) per una gestione efficiente del routing e delle richieste API. Il frontend, invece, è stato minuziosamente plasmato da un connubio di HTML, CSS e JavaScript, offrendo un'interfaccia utente gradevole alla vista e intuitiva. Tale architettura consente iterazioni rapide e l'integrazione fluida di nuove funzionalità, pur mantenendo una solida base di stabilità. Fount abbraccia lo spirito open-source, accogliendo contributi e collaborazione.
 
 ### Immergiti in un mondo di funzionalità distintive
 

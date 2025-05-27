@@ -107,7 +107,7 @@ Fount được xây dựng cho tương lai. Những tính năng mới từ cộn
 
 ## Kiến trúc: Nền tảng của sự đổi mới
 
-Fount được xây dựng trên một kiến trúc mạnh mẽ và có khả năng mở rộng, cân bằng giữa hiệu suất và khả năng bảo trì. Phần backend tận dụng sức mạnh và tốc độ của [Deno](https://deno.com/), một runtime JavaScript và TypeScript an toàn và hiện đại. Chúng tôi sử dụng framework [Express](https://expressjs.com/) để xử lý hiệu quả các yêu cầu định tuyến và API. Phần frontend được xây dựng tỉ mỉ từ sự kết hợp của HTML, CSS và JavaScript, mang đến một giao diện người dùng dễ chịu và trực quan. Kiến trúc này cho phép lặp lại nhanh chóng và tích hợp liền mạch các tính năng mới, đồng thời duy trì một nền tảng vững chắc và ổn định. Fount đề cao tinh thần mã nguồn mở, hoan nghênh sự đóng góp và hợp tác.
+Fount được xây dựng trên một kiến trúc mạnh mẽ và có khả năng mở rộng, cân bằng giữa hiệu suất và khả năng bảo trì. Phần backend tận dụng sức mạnh và tốc độ của [Bun](https://Bun.sh/), một runtime JavaScript và TypeScript an toàn và hiện đại. Chúng tôi sử dụng framework [Express](https://expressjs.com/) để xử lý hiệu quả các yêu cầu định tuyến và API. Phần frontend được xây dựng tỉ mỉ từ sự kết hợp của HTML, CSS và JavaScript, mang đến một giao diện người dùng dễ chịu và trực quan. Kiến trúc này cho phép lặp lại nhanh chóng và tích hợp liền mạch các tính năng mới, đồng thời duy trì một nền tảng vững chắc và ổn định. Fount đề cao tinh thần mã nguồn mở, hoan nghênh sự đóng góp và hợp tác.
 
 ### Đắm chìm trong thế giới của các tính năng nổi bật
 
