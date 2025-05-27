@@ -306,7 +306,6 @@ async function initializeFromURLParams() {
 
 		if (charName)
 			charSelect.value = charName
-
 	} catch (error) {
 		console.error('Failed to initialize from URL parameters:', error)
 	}

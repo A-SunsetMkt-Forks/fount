@@ -21,7 +21,7 @@ export default {
 		}
 		// 可以添加更多语言的本地化信息
 	},
-	Load: async (router) => {
+	Load: async ({ router }) => {
 		// 设置此 shell 的 API 端点
 		setEndpoints(router)
 	},
@@ -45,7 +45,6 @@ export default {
 					await runBot(user, botname)
 				else
 					throw new Error(`Unknown action for telegrambot: ${action}. Supported actions are 'start' or 'stop'.`)
-
 			}
 		},
 		jobs: {

@@ -63,7 +63,7 @@ async function loadBotConfig(botname) {
 		}
 
 	selectedBot = botname
-	const config = await getBotConfig(botname) // Use imported function
+	const config = await getBotConfig(botname)
 	tokenInput.value = config.token || ''
 	charSelect.value = config.char || ''
 
@@ -79,7 +79,6 @@ async function loadBotConfig(botname) {
 				if (!error)
 					// config.config = updatedContent.json // This will be handled by editor.get() later
 					isDirty = true // 标记为有未保存的更改
-
 			},
 			onSave: handleSaveConfig
 		})
@@ -100,8 +99,8 @@ async function handleNewBot() {
 		return
 	}
 
-	await newBotConfig(botname) // Use imported function
-	botList = await getBotList() // Use imported function
+	await newBotConfig(botname)
+	botList = await getBotList()
 	populateBotList()
 	botListSelect.value = botname
 	await loadBotConfig(botname)
@@ -110,14 +109,10 @@ async function handleNewBot() {
 async function handleDeleteBot() {
 	if (!selectedBot) return
 
-	if (isDirty)
-		if (!confirm(geti18n('telegram_bots.alerts.unsavedChangesOnDelete')))
-			return
-
 	if (!confirm(geti18n('telegram_bots.alerts.confirmDeleteBot', { botname: selectedBot }))) return
 
-	await deleteBotConfig(selectedBot) // Use imported function
-	botList = await getBotList() // Use imported function
+	await deleteBotConfig(selectedBot)
+	botList = await getBotList()
 	populateBotList()
 
 	if (botList.length > 0) {
@@ -137,7 +132,7 @@ async function handleDeleteBot() {
 async function handleCharSelectChange() {
 	if (isDirty)
 		if (!confirm(geti18n('telegram_bots.alerts.unsavedChanges'))) {
-			const currentConfig = await getBotConfig(selectedBot) // Use imported function
+			const currentConfig = await getBotConfig(selectedBot)
 			charSelect.value = currentConfig.char || '' // 如果取消则还原选择
 			return
 		}
@@ -178,7 +173,7 @@ async function handleSaveConfig() {
 	saveConfigButton.disabled = true
 
 	try {
-		await setBotConfig(selectedBot, config) // Use imported function
+		await setBotConfig(selectedBot, config)
 		console.log(geti18n('telegram_bots.alerts.configSaved'))
 		isDirty = false
 
@@ -203,15 +198,15 @@ async function handleStartStopBot() {
 	startStopBotButton.disabled = true
 
 	try {
-		const runningBots = await getRunningBotList() // Use imported function
+		const runningBots = await getRunningBotList()
 		const isRunning = runningBots.includes(selectedBot)
 		if (isRunning) {
-			await stopBot(selectedBot) // Use imported function
+			await stopBot(selectedBot)
 			startStopStatusText.textContent = geti18n('telegram_bots.configCard.buttons.startBot')
 			startStopBotButton.classList.remove('btn-error')
 			startStopBotButton.classList.add('btn-success')
 		} else {
-			await startBot(selectedBot) // Use imported function
+			await startBot(selectedBot)
 			startStopStatusText.textContent = geti18n('telegram_bots.configCard.buttons.stopBot')
 			startStopBotButton.classList.remove('btn-success')
 			startStopBotButton.classList.add('btn-error')
@@ -236,7 +231,7 @@ async function updateStartStopButtonState() {
 		startStopBotButton.classList.add('btn-success')
 		return
 	}
-	const runningBots = await getRunningBotList() // Use imported function
+	const runningBots = await getRunningBotList()
 	if (runningBots.includes(selectedBot)) {
 		startStopStatusText.textContent = geti18n('telegram_bots.configCard.buttons.stopBot')
 		startStopBotButton.classList.remove('btn-success')
@@ -257,16 +252,16 @@ async function initializeFromURLParams() {
 	const botName = urlParams.get('name')
 	const charName = urlParams.get('char')
 
-	botList = await getBotList() // Use imported function
-	charList = await getPartList('chars') // Use getPartList
+	botList = await getBotList()
+	charList = await getPartList('chars')
 	populateBotList()
 	populateCharList()
 
 	if (botName) {
 		if (!botList.includes(botName))
 			try {
-				await newBotConfig(botName) // Use imported function
-				botList = await getBotList() // Use imported function
+				await newBotConfig(botName)
+				botList = await getBotList()
 				populateBotList()
 			} catch (error) {
 				console.error('Failed to create new bot from URL parameter:', error)

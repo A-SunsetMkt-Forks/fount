@@ -145,7 +145,6 @@ export async function createSimpleDiscordInterface(charAPI, ownerUsername, botCh
 					last.timeStamp = entry.timeStamp
 					if (entry.extension?.discord_message_id)
 						last.extension = { ...last.extension || {}, discord_message_id: entry.extension.discord_message_id }
-
 				} else {
 					if (last) newlog.push(last)
 					last = entry
@@ -190,7 +189,6 @@ export async function createSimpleDiscordInterface(charAPI, ownerUsername, botCh
 
 					if (shouldReply && triggerMessage.author.id !== client.user.id && !triggerMessage.author.bot)
 						await DoMessageReply(triggerMessage, channelId)
-
 				}
 			} catch (error) {
 				console.error(`[SimpleDiscord] 处理频道 ${channelId} 消息队列出错:`, error)
@@ -236,7 +234,6 @@ export async function createSimpleDiscordInterface(charAPI, ownerUsername, botCh
 								if (isLastPart && discordPayload.files.length > 0) currentPartPayload.files = discordPayload.files
 								await sendAndCache(currentPartPayload, isLastPart ? replyFromChar : undefined)
 							}
-
 					}
 					return null
 				}
@@ -274,7 +271,6 @@ export async function createSimpleDiscordInterface(charAPI, ownerUsername, botCh
 								if (isLastPart && finalDiscordPayload.files.length > 0) currentPartPayload.files = finalDiscordPayload.files
 								await sendAndCache(currentPartPayload, isLastPart ? aiFinalReply : undefined)
 							}
-
 					}
 				}
 			} catch (error) {

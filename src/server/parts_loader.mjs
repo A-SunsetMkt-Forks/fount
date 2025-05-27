@@ -174,7 +174,7 @@ export async function baseloadPart(username, parttype, partname, {
 	return await Loader(path)
 }
 
-export async function baseMjsPartUnLoader(path) {
+export async function baseMjsPartUnloader(path) {
 	if (!fs.existsSync(path)) return
 	async function codeunloader(path) {
 		delete require.cache[require.resolve(path)]
@@ -216,7 +216,7 @@ export async function loadPartBase(username, parttype, partname, Initargs, {
 			return part
 		}
 		catch (e) {
-			await baseMjsPartUnLoader(path).catch(x => 0)
+			await baseMjsPartUnloader(path).catch(x => 0)
 			throw e
 		}
 	},
@@ -327,7 +327,7 @@ export async function initPart(username, parttype, partname, Initargs, {
 export async function unloadPartBase(username, parttype, partname, unLoadargs, {
 	pathGetter = () => GetPartPath(username, parttype, partname),
 	unLoader = (part) => part.Unload?.(unLoadargs),
-	afterUnload = baseMjsPartUnLoader,
+	afterUnload = baseMjsPartUnloader,
 } = {}) {
 	/** @type {T} */
 	const part = parts_set[username][parttype][partname]
