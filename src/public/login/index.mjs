@@ -129,7 +129,6 @@ async function handleSendVerificationCode() {
 			errorMessage.textContent = geti18n('auth.error.verificationCodeRateLimit')
 		else
 			errorMessage.textContent = geti18n('auth.error.verificationCodeSendError')
-
 	} catch (error) {
 		console.error('Error sending verification code:', error)
 		errorMessage.textContent = geti18n('auth.error.verificationCodeSendError')
@@ -194,7 +193,6 @@ async function handleFormSubmit(event) {
 						window.location.href = `/shells/tutorial?redirect=${redirect}` + window.location.hash
 				else
 					window.location.href = `/shells/${hasLoggedIn ? 'home' : 'tutorial'}`
-
 			} else {
 				console.log('Registration successful!')
 				toggleForm() // 注册成功后自动切换到登录表单

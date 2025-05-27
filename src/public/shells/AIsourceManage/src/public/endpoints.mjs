@@ -1,31 +1,36 @@
 export async function getConfigTemplate(generatorName) {
-	return fetch(`/api/shells/AIsourceManage/getConfigTemplate?${new URLSearchParams({ generator: generatorName })}`)
+	const response = await fetch(`/api/shells/AIsourceManage/getConfigTemplate?${new URLSearchParams({ generator: generatorName })}`)
+	return response.json()
 }
 
 export async function getAIFile(AISourceFile) {
-	return fetch(`/api/shells/AIsourceManage/getfile?${new URLSearchParams({ AISourceFile })}`)
+	const response = await fetch(`/api/shells/AIsourceManage/getfile?${new URLSearchParams({ AISourceFile })}`)
+	return response.json()
 }
 
 export async function setAIFile(AISourceFile, data) {
-	return fetch('/api/shells/AIsourceManage/setfile', {
+	const response = await fetch('/api/shells/AIsourceManage/setfile', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ AISourceFile, data }),
 	})
+	return response.json()
 }
 
 export async function deleteAIFile(AISourceFile) {
-	return fetch('/api/shells/AIsourceManage/deletefile', {
+	const response = await fetch('/api/shells/AIsourceManage/deletefile', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ AISourceFile }),
 	})
+	return response.json()
 }
 
 export async function addAIFile(AISourceFile) {
-	return fetch('/api/shells/AIsourceManage/addfile', {
+	const response = await fetch('/api/shells/AIsourceManage/addfile', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ AISourceFile }),
 	})
+	return response.json()
 }

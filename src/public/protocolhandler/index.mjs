@@ -45,7 +45,6 @@ async function handleRunShell(parts) {
 			document.getElementById('message').textContent = geti18n('protocolhandler.shellCommandSent')
 		else
 			document.getElementById('message').textContent = geti18n('protocolhandler.shellCommandFailed')
-
 	} catch (error) {
 		console.error('Error sending shell command:', error)
 		document.getElementById('message').textContent = geti18n('protocolhandler.shellCommandError')
