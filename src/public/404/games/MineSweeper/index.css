@@ -1,0 +1,52 @@
+/* Custom styles to override daisyUI or add specific game styles */
+#game-board td {
+	border: 2px outset #c0c0c0;
+	text-align: center;
+	font-size: 1.25rem;
+	/* Equivalent to 20px, using rem for accessibility */
+	font-weight: bold;
+	cursor: pointer;
+}
+
+#game-board td.clicked {
+	border: 1px solid #808080;
+	background-color: #e0e0e0;
+}
+
+#game-board td.flagged {
+	color: red;
+}
+
+#game-board td.question {
+	color: blue;
+}
+
+#game-board td.mine {
+	color: red;
+}
+
+/* New Styles */
+#game-board td.correct-flag {
+	color: green;
+	/* Or any visual distinction you prefer */
+}
+
+#game-board td.wrong-flag {
+	color: orange;
+	/* Or any visual distinction you prefer */
+}
+
+.controls {
+	width: 100%;
+	max-width: 480px;
+	/* Adjust as needed */
+}
+
+@media (max-width: 600px) {
+	#game-board td {
+		width: 25px;
+		height: 25px;
+		font-size: 1rem;
+		/* Equivalent to 16px */
+	}
+}

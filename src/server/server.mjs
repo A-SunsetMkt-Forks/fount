@@ -43,7 +43,7 @@ mainRouter.use((req, res, next) => {
 	return next()
 })
 FinalRouter.use((req, res) => {
-	if (req.accepts('html')) return res.status(404).sendFile(__dirname + '/src/public/404.html')
+	if (req.accepts('html')) return res.status(404).sendFile(__dirname + '/src/public/404/index.html')
 	res.status(404).type('txt').send('Not found')
 })
 const errorHandler = (err, req, res, next) => {

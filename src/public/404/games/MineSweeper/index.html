@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html data-theme="dark">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="darkreader-lock">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title data-i18n="404.title"></title>
+	<link href="https://cdn.jsdelivr.net/npm/daisyui/daisyui.css" rel="stylesheet" type="text/css" />
+	<link href="/base.css" rel="stylesheet" type="text/css" />
+	<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser"></script>
+	<script type="module" src="/base.mjs"></script>
+	<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+	<link rel="stylesheet" href="./index.css" type="text/css" />
+</head>
+
+<body>
+	<div class="container flex flex-col items-center gap-4 mb-8">
+		<div class="controls flex justify-between items-center mb-2 w-full max-w-md">
+			<div class="flex items-center gap-2">
+				<label for="difficulty" class="w-full" data-i18n="404.MineSweeper.difficultyLabel"></label>
+				<select id="difficulty" class="w-full select select-sm select-bordered">
+					<option value="easy" selected data-i18n="404.MineSweeper.difficultyEasy"></option>
+					<option value="medium" data-i18n="404.MineSweeper.difficultyMedium"></option>
+					<option value="hard" data-i18n="404.MineSweeper.difficultyHard"></option>
+					<option value="custom" data-i18n="404.MineSweeper.difficultyCustom"></option>
+				</select>
+			</div>
+			<div class="flex items-center gap-2">
+				<span data-i18n="404.MineSweeper.minesLeftLabel"></span>
+				<span id="mines-left"></span>
+			</div>
+			<div class="flex items-center gap-2">
+				<span data-i18n="404.MineSweeper.timeLabel"></span>
+				<span id="timer">0</span>
+			</div>
+			<button id="restart-button" class="btn btn-sm" data-i18n="404.MineSweeper.restartButton"></button>
+			<button id="sound-toggle" class="btn btn-sm">🔇</button>
+		</div>
+
+		<div id="custom-options" class="hidden flex flex-wrap justify-center gap-2 max-w-md">
+			<div class="flex items-center gap-2">
+				<label for="custom-rows" class="text-sm" data-i18n="404.MineSweeper.rowsLabel"></label>
+				<input type="number" id="custom-rows" min="5" max="999" value="16" class="input input-sm input-bordered w-24">
+			</div>
+			<div class="flex items-center gap-2">
+				<label for="custom-cols" class="text-sm" data-i18n="404.MineSweeper.colsLabel"></label>
+				<input type="number" id="custom-cols" min="5" max="999" value="16" class="input input-sm input-bordered w-24">
+			</div>
+			<div class="flex items-center gap-2">
+				<label for="custom-mines" class="text-sm" data-i18n="404.MineSweeper.minesCountLabel"></label>
+				<input type="number" id="custom-mines" min="1" value="40" class="input input-sm input-bordered w-24">
+			</div>
+		</div>
+
+		<div class="overflow-x-auto">
+			<table id="game-board" class="table-compact"></table>
+		</div>
+		<div id="message" class="text-lg font-bold mt-2"></div>
+	</div>
+
+	<script type="module" src="./index.mjs"></script>
+</body>
+
+</html>
