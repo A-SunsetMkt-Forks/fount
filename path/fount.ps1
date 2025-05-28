@@ -22,11 +22,44 @@ if (!(Get-Command fount -ErrorAction SilentlyContinue)) {
 	$env:PATH = $path
 }
 
-if ($args.Count -gt 0 -and $args[0] -eq 'open') {
-	if (!(Get-Module fount-pwsh -ListAvailable)) {
-		Install-Module -Name fount-pwsh -Scope CurrentUser -Force
+# fount 协议注册 (新增)
+if (-not $IN_DOCKER) {
+	$protocolName = "fount"
+	$protocolDescription = "URL:fount Protocol"
+	# 使用 fount.bat 作为协议处理程序，因为它是Windows上的主入口点
+	$command = "`"$FOUNT_DIR\path\fount.bat`" protocolhandle `"%1`""
+
+	try {
+		# 创建目录
+		New-Item -Path "HKCU:\Software\Classes\$protocolName" -Force | Out-Null
+		# 设置协议根键
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "(Default)" -Value $protocolDescription -ErrorAction Stop
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "URL Protocol" -Value "" -ErrorAction Stop
+		# 创建 shell\open\command 子键
+		New-Item -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Force | Out-Null
+		# 设置协议处理命令
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Name "(Default)" -Value $command -ErrorAction Stop
 	}
-	$runargs = $args[1..$args.Count]
+	catch {
+		Write-Warning "Failed to register fount:// protocol handler: $($_.Exception.Message)"
+	}
+}
+
+$auto_installed_pwsh_modules = Get-Content "$FOUNT_DIR/data/installer/auto_installed_pwsh_modules" -Raw -ErrorAction Ignore
+if (!$auto_installed_pwsh_modules) { $auto_installed_pwsh_modules = '' }
+$auto_installed_pwsh_modules = $auto_installed_pwsh_modules.Split(';')
+
+function Test-PWSHModule([string]$ModuleName) {
+	if (!(Get-Module $ModuleName -ListAvailable)) {
+		$auto_installed_pwsh_modules += $ModuleName
+		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
+		Set-Content "$FOUNT_DIR/data/installer/auto_installed_pwsh_modules" $($auto_installed_pwsh_modules -join ';')
+		Install-Module -Name $ModuleName -Scope CurrentUser -Force
+	}
+}
+
+if ($args.Count -gt 0 -and $args[0] -eq 'open') {
+	Test-PWSHModule fount-pwsh
 	Start-Job -ScriptBlock {
 		while (-not (Test-FountRunning)) {
 			Start-Sleep -Seconds 1
@@ -37,10 +70,8 @@ if ($args.Count -gt 0 -and $args[0] -eq 'open') {
 	fount @runargs
 	exit
 }
-if ($args.Count -gt 0 -and $args[0] -eq 'background') {
-	if (!(Get-Command ps12exe -ErrorAction Ignore)) {
-		Install-Module -Name ps12exe -Scope CurrentUser -Force
-	}
+elseif ($args.Count -gt 0 -and $args[0] -eq 'background') {
+	Test-PWSHModule ps12exe
 	$TempDir = [System.IO.Path]::GetTempPath()
 	$exepath = Join-Path $TempDir "fount-background.exe"
 	if (!(Test-Path $exepath)) {
@@ -48,6 +79,29 @@ if ($args.Count -gt 0 -and $args[0] -eq 'background') {
 	}
 	$runargs = $args[1..$args.Count]
 	Start-Process -FilePath $exepath -ArgumentList $runargs
+	exit
+}
+elseif ($args.Count -gt 0 -and $args[0] -eq 'protocolhandle') {
+	# 新增 protocolhandle 逻辑
+	$protocolUrl = $args[1]
+	if (-not $protocolUrl) {
+		Write-Error "Error: No URL provided for protocolhandle."
+		exit 1
+	}
+	# 编码 URL 参数，防止特殊字符问题，确保传入的 URL 能正确作为查询参数
+	$encodedUrl = [uri]::EscapeDataString($protocolUrl)
+	$targetUrl = "https://steve02081504.github.io/fount/protocol/?url=$encodedUrl"
+
+	Test-PWSHModule fount-pwsh
+	Start-Job -ScriptBlock {
+		param ($targetUrl)
+		while (-not (Test-FountRunning)) {
+			Start-Sleep -Seconds 1
+		}
+		Start-Process $targetUrl
+	} -ArgumentList $targetUrl
+	$runargs = $args[2..$args.Count]
+	fount @runargs
 	exit
 }
 
@@ -105,9 +159,13 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 	if (!(Get-Command winget -ErrorAction SilentlyContinue)) {
 		Import-Module Appx
 		Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
+		Set-Content "$FOUNT_DIR/data/installer/auto_installed_winget" '1'
 	}
 	if (Get-Command winget -ErrorAction SilentlyContinue) {
 		winget install --id Git.Git -e --source winget
+		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
+		Set-Content "$FOUNT_DIR/data/installer/auto_installed_git" '1'
 	}
 	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 	if (!(Get-Command git -ErrorAction SilentlyContinue)) {
@@ -209,6 +267,8 @@ if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 		Expand-Archive -Path "$env:TEMP/deno.zip" -DestinationPath "$FOUNT_DIR/path"
 		Remove-Item -Path "$env:TEMP/deno.zip" -Force
 	}
+	New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
+	Set-Content "$FOUNT_DIR/data/installer/auto_installed_deno" '1'
 	if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 		Write-Host "Deno missing, you cant run fount without deno"
 		exit 1
@@ -318,10 +378,10 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'keepalive') {
 }
 elseif ($args.Count -gt 0 -and $args[0] -eq 'remove') {
 	run shutdown
-	Write-Host "removing fount..."
+	Write-Host "Removing fount..."
 
 	# Remove fount from PATH
-	Write-Host "removing fount from PATH..."
+	Write-Host "Removing fount from PATH..."
 	$path = $env:PATH -split ';'
 	$path = $path | Where-Object { !$_.StartsWith("$FOUNT_DIR") }
 	$env:Path = $path -join ';'
@@ -330,10 +390,10 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'remove') {
 	$UserPath = $UserPath | Where-Object { !$_.StartsWith("$FOUNT_DIR") }
 	$UserPath = $UserPath -join ';'
 	[System.Environment]::SetEnvironmentVariable('PATH', $UserPath, [System.EnvironmentVariableTarget]::User)
-	Write-Host "fount removed from PATH."
+	Write-Host "Fount removed from PATH."
 
 	# Remove fount-pwsh from PowerShell Profile
-	Write-Host "removing fount-pwsh from PowerShell Profile..."
+	Write-Host "Removing fount-pwsh from PowerShell Profile..."
 	if (Test-Path $Profile) {
 		$ProfileContent = Get-Content $Profile -ErrorAction Ignore
 		$ProfileContent = $ProfileContent -split "`n"
@@ -345,15 +405,28 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'remove') {
 		Write-Host "fount-pwsh removed from PowerShell Profile."
 	}
 	else {
-		Write-Host "powerShell Profile not found, skipping fount-pwsh removal from profile."
+		Write-Host "PowerShell Profile not found, skipping fount-pwsh removal from profile."
 	}
 
-	# uninstall fount-pwsh
+	# Uninstall fount-pwsh
 	Write-Host "Uninstalling fount-pwsh..."
 	try { Uninstall-Module -Name fount-pwsh -Scope CurrentUser -Force -ErrorAction Stop } catch {}
 
+	# Remove fount protocol handler (新增)
+	if (-not $IN_DOCKER) {
+		Write-Host "Removing fount:// protocol handler..."
+		try {
+			# 静默删除注册表键及其所有子键
+			Remove-Item -Path "HKCU:\Software\Classes\fount" -Recurse -Force -ErrorAction SilentlyContinue
+			Write-Host "fount:// protocol handler removed."
+		}
+		catch {
+			Write-Warning "Failed to remove fount:// protocol handler: $($_.Exception.Message)"
+		}
+	}
+
 	# Remove Windows Terminal Profile
-	Write-Host "removing Windows Terminal Profile..."
+	Write-Host "Removing Windows Terminal Profile..."
 	$WTjsonDirPath = "$env:LOCALAPPDATA/Microsoft/Windows Terminal/Fragments/fount"
 	if (Test-Path $WTjsonDirPath -PathType Container) {
 		Remove-Item -Path $WTjsonDirPath -Force -Recurse
@@ -364,7 +437,7 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'remove') {
 	}
 
 	# Remove Desktop Shortcut
-	Write-Host "removing Desktop Shortcut..."
+	Write-Host "Removing Desktop Shortcut..."
 	$ShortcutPath = "$env:USERPROFILE\Desktop\fount.lnk"
 	if (Test-Path $ShortcutPath) {
 		Remove-Item -Path $ShortcutPath -Force
@@ -374,12 +447,41 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'remove') {
 		Write-Host "Desktop Shortcut not found."
 	}
 
-	# Remove fount installation directory
-	Write-Host "removing fount installation directory..."
-	Remove-Item -Path $FOUNT_DIR -Recurse -Force -ErrorAction SilentlyContinue
-	Write-Host "fount installation directory removed."
+	# Remove Installed pwsh modules
+	Write-Host "Removing Installed pwsh modules..."
+	$auto_installed_pwsh_modules | ForEach-Object {
+		try {
+			Uninstall-Module -Name $_ -Scope CurrentUser -Force -ErrorAction Stop
+			Write-Host "$_ removed."
+		}
+		catch {
+			Write-Warning "Failed to remove ${_}: $($_.Exception.Message)"
+		}
+	}
 
-	Write-Host "fount uninstallation complete."
+	if (Test-Path "$FOUNT_DIR/data/installer/auto_installed_git") {
+		Write-Host "Uninstalling Git..."
+		winget uninstall --id Git.Git -e --source winget
+	}
+
+	if (Test-Path "$FOUNT_DIR/data/installer/auto_installed_winget") {
+		Write-Host "Uninstalling Winget..."
+		Import-Module Appx
+		Remove-AppxPackage -Package Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+	}
+
+	if (Test-Path "$FOUNT_DIR/data/installer/auto_installed_deno") {
+		Write-Host "Uninstalling Deno..."
+		Remove-Item $(Get-Command deno).Source -Force -ErrorAction Ignore
+		Remove-Item "~/.deno" -Force -Recurse -ErrorAction Ignore
+	}
+
+	# Remove fount installation directory
+	Write-Host "Removing fount installation directory..."
+	Remove-Item -Path $FOUNT_DIR -Recurse -Force -ErrorAction SilentlyContinue
+	Write-Host "Fount installation directory removed."
+
+	Write-Host "Fount uninstallation complete."
 	exit 0
 }
 else {
