@@ -747,7 +747,7 @@ fount_upgrade() {
 		echo "Fount repository not found, cloning..."
 		rm -rf "$FOUNT_DIR/.git-clone"  # 移除任何旧的 .git-clone 目录
 		mkdir -p "$FOUNT_DIR/.git-clone"
-		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1
+		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1 --single-branch
 		if [ $? -ne 0 ]; then
 			echo "Error: Failed to clone fount repository. Check connection or configuration." >&2
 			exit 1

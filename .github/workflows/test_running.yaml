@@ -14,18 +14,15 @@ jobs:
       - name: Run install script (Unix)
         if: runner.os != 'Windows'
         run: |
-          export FOUNT_DIR="./fount"
-          curl -fsSL https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash -s init
-          source "$HOME/.profile"
+          git clone https://github.com/steve02081504/fount.git --depth 1 --single-branch --branch ${GITHUB_SHA}
+          ./fount/path/fount.sh init
 
       - name: Run install script (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $env:FOUNT_DIR = "./fount"
-          $scriptContent = Invoke-RestMethod https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.ps1
-          Invoke-Expression "function fountInstaller { $scriptContent }"
-          fountInstaller init
+          git clone https://github.com/steve02081504/fount.git --depth 1 --single-branch --branch ${GITHUB_SHA}
+          ./fount/path/fount.ps1 init
 
       - name: Run remove script (Unix)
         if: runner.os != 'Windows'

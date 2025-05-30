@@ -186,7 +186,7 @@ function fount_upgrade {
 	if (!(Test-Path -Path "$FOUNT_DIR/.git")) {
 		Remove-Item -Path "$FOUNT_DIR/.git-clone" -Recurse -Force -ErrorAction SilentlyContinue
 		New-Item -ItemType Directory -Path "$FOUNT_DIR/.git-clone"
-		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1
+		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1 --single-branch
 		Move-Item -Path "$FOUNT_DIR/.git-clone/.git" -Destination "$FOUNT_DIR/.git"
 		Remove-Item -Path "$FOUNT_DIR/.git-clone" -Recurse -Force
 		git -C "$FOUNT_DIR" fetch origin
