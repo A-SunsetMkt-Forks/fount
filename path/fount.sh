@@ -4,6 +4,9 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 FOUNT_DIR=$(dirname "$SCRIPT_DIR")
 
+# 转义后的Fount路径用于sed
+ESCAPED_FOUNT_DIR=$(echo "$FOUNT_DIR" | sed 's/\//\\\//g')
+
 # 自动安装包列表文件及标记文件
 INSTALLER_DATA_DIR="$FOUNT_DIR/data/installer"
 INSTALLED_SYSTEM_PACKAGES_FILE="$INSTALLER_DATA_DIR/auto_installed_system_packages"
@@ -565,11 +568,9 @@ ensure_fount_path() {
 			echo "Adding fount path to $profile_file..."
 			# remove old fount path first
 			if [ "$OS_TYPE" = "Darwin" ]; then
-				sed -i '' '/export PATH="\$PATH:'"$FOUNT_DIR\/path"'"/d' "$profile_file"
-				sed -i '' '/fount\/path/d' "$profile_file"
+				sed -i '' '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
 			else
-				sed -i '/export PATH="\$PATH:'"$FOUNT_DIR\/path"'"/d' "$profile_file"
-				sed -i '/fount\/path/d' "$profile_file"
+				sed -i '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
 			fi
 			# 若profile不是\n结尾，加上
 			if [ "$(tail -c 1 "$profile_file")" != $'\n' ]; then
@@ -1097,11 +1098,9 @@ if [[ $# -gt 0 ]]; then
 				if [ -f "$profile_file" ]; then
 					# macOS sed needs empty string, Linux sed doesn't
 					if [ "$OS_TYPE" = "Darwin" ]; then
-						sed -i '' '/export PATH="\$PATH:'"$FOUNT_DIR\/path"'"/d' "$profile_file"
-						sed -i '' '/fount\/path/d' "$profile_file"
+						sed -i '' '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
 					else
-						sed -i '/export PATH="\$PATH:'"$FOUNT_DIR\/path"'"/d' "$profile_file"
-						sed -i '/fount\/path/d' "$profile_file"
+						sed -i '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
 					fi
 					echo "Cleaned PATH entries in $profile_file."
 				fi
