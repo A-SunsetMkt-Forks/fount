@@ -118,10 +118,6 @@ install_package() {
 	elif command -v brew &> /dev/null; then
 		if ! brew list --formula "$package_name" &> /dev/null; then
 			brew install "$package_name" && install_successful=1
-			eval "$(brew shellenv)" || eval "$(/opt/homebrew/bin/brew shellenv)"
-		else
-			echo "$package_name is already installed via brew."
-			install_successful=1 # 即使是外部安装，也视为成功
 		fi
 	elif command -v pacman &> /dev/null; then
 		if command -v sudo &> /dev/null; then
@@ -549,20 +545,6 @@ remove_desktop_shortcut() {
 ensure_fount_path() {
 	if ! command -v fount.sh &> /dev/null; then
 		local profile_file="$HOME/.profile"
-		if [[ "$SHELL" == *"/zsh" ]]; then
-			profile_file="$HOME/.zshrc"
-		elif [[ "$SHELL" == *"/bash" ]]; then
-			profile_file="$HOME/.bashrc"
-		fi
-
-		# Fallback to .profile if specific shell config not found or for default
-		if [[ ! -f "$profile_file" ]] && [[ -f "$HOME/.profile" ]]; then
-			profile_file="$HOME/.profile"
-		elif [[ ! -f "$profile_file" ]] && [[ ! -f "$HOME/.profile" ]]; then
-			# If no profile file exists, create .profile
-			touch "$HOME/.profile"
-			profile_file="$HOME/.profile"
-		fi
 
 		if ! grep -q "export PATH=.*$FOUNT_DIR/path" "$profile_file" 2>/dev/null; then
 			echo "Adding fount path to $profile_file..."

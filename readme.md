@@ -57,6 +57,7 @@ Embark on your journey with fount, a stable and reliable platform.  A few simple
 
 ```bash
 # If needed, define the environment variable $FOUNT_DIR to specify the fount directory
+if ! command -v curl &> /dev/null; then if command -v pkg &> /dev/null; then pkg install -y curl; elif command -v apt-get &> /dev/null; then if command -v sudo &> /dev/null; then sudo apt-get update; sudo apt-get install -y curl; else apt-get update; apt-get install -y curl; fi; elif command -v brew &> /dev/null; then brew install curl; elif command -v pacman &> /dev/null; then if command -v sudo &> /dev/null; then sudo pacman -Syy; sudo pacman -S --needed --noconfirm curl; else pacman -Syy; pacman -S --needed --noconfirm curl; fi; elif command -v dnf &> /dev/null; then if command -v sudo &> /dev/null; then sudo dnf install -y curl; else dnf install -y curl; fi; elif command -v zypper &> /dev/null; then if command -v sudo &> /dev/null; then sudo zypper install -y --no-confirm curl; else zypper install -y --no-confirm curl; fi; elif command -v apk &> /dev/null; then apk add --update curl; else echo "curl is not installed, and no known package manager is available."; exit 1; fi; fi
 curl -fsSL https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash
 source "$HOME/.profile"
 ```
@@ -64,6 +65,7 @@ source "$HOME/.profile"
 Should you wish to pause, to gather your thoughts before the grand adventure (a dry run):
 
 ```bash
+if ! command -v curl &> /dev/null; then if command -v pkg &> /dev/null; then pkg install -y curl; elif command -v apt-get &> /dev/null; then if command -v sudo &> /dev/null; then sudo apt-get update; sudo apt-get install -y curl; else apt-get update; apt-get install -y curl; fi; elif command -v brew &> /dev/null; then brew install curl; elif command -v pacman &> /dev/null; then if command -v sudo &> /dev/null; then sudo pacman -Syy; sudo pacman -S --needed --noconfirm curl; else pacman -Syy; pacman -S --needed --noconfirm curl; fi; elif command -v dnf &> /dev/null; then if command -v sudo &> /dev/null; then sudo dnf install -y curl; else dnf install -y curl; fi; elif command -v zypper &> /dev/null; then if command -v sudo &> /dev/null; then sudo zypper install -y --no-confirm curl; else zypper install -y --no-confirm curl; fi; elif command -v apk &> /dev/null; then apk add --update curl; else echo "curl is not installed, and no known package manager is available."; exit 1; fi; fi
 curl -fsSL https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash -s init
 source "$HOME/.profile"
 ```

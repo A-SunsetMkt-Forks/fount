@@ -3,7 +3,8 @@
 #_pragma title "fount"
 
 if (!$IsWindows) {
-	curl -fsSL https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash -s @args
+	Invoke-RestMethod https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash -s @args
+	exit $LastExitCode
 }
 
 if (!$env:FOUNT_DIR) {
