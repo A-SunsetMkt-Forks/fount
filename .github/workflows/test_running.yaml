@@ -21,10 +21,10 @@ jobs:
         run: |
           git clone https://github.com/steve02081504/fount.git --depth 1 --single-branch --branch ${{ steps.extract_branch.outputs.branch }}
           if [[ "$OSTYPE" == "darwin"* ]]; then
-            xattr -dr com.apple.quarantine "$FOUNT_DIR"
+            xattr -dr com.apple.quarantine "./fount"
           fi
-          find "$FOUNT_DIR" -name "*.sh" -exec chmod +x {} \;
-          find "$FOUNT_DIR/path" -type f -exec chmod +x {} \;
+          find "./fount" -name "*.sh" -exec chmod +x {} \;
+          find "./fount/path" -type f -exec chmod +x {} \;
           ./fount/path/fount.sh init
 
       - name: Run install script (Windows)

@@ -510,11 +510,11 @@ install_bun
 
 # 函数: 升级 Bun
 function bun_upgrade() {
-	$bun_ver = bun --revision 2>$null
+	$bun_ver = bun --revision
 	if (!$bun_ver) {
 		Write-Host "Could not determine current Bun version, attempting upgrade anyway..."
-		bun upgrade 2>$null
-		$bun_ver = bun --revision 2>$null
+		bun upgrade
+		$bun_ver = bun --revision
 	}
 
 	if (!$bun_ver) {
@@ -528,10 +528,10 @@ function bun_upgrade() {
 	}
 
 	Write-Host "Upgrading Bun (current version: $bun_ver)..."
-	bun upgrade $bun_update_channel 2>$null
+	bun upgrade $bun_update_channel
 	$upgrade_exit_code = $LASTEXITCODE
 
-	$bun_version_after = bun --revision 2>$null
+	$bun_version_after = bun --revision
 
 	if ($upgrade_exit_code -ne 0 -or ($bun_version_after -eq $bun_ver)) {
 		Write-Warning "Bun upgrade may have failed or no new version was found. Current version: $bun_version_after"
@@ -549,7 +549,7 @@ else {
 }
 
 # 输出 Bun 版本信息
-"Bun " + (bun --revision 2>$null)
+"Bun " + (bun --revision)
 
 # 函数: 判断当前用户是否为 Root/Administrator
 function isRoot {
