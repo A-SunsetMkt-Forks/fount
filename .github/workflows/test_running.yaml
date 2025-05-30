@@ -21,7 +21,7 @@ jobs:
         run: |
           git clone https://github.com/steve02081504/fount.git --depth 1 --single-branch --branch ${{ steps.extract_branch.outputs.branch }}
           if [[ "$OSTYPE" == "darwin"* ]]; then
-            xattr -dr com.apple.quarantine "./fount"
+            xattr -dr com.apple.quarantine "./fount" || true
           fi
           find "./fount" -name "*.sh" -exec chmod +x {} \;
           find "./fount/path" -type f -exec chmod +x {} \;

@@ -106,7 +106,7 @@ if ! command -v fount.sh &> /dev/null; then
 	fi
 	# 移除隔离属性 (仅限 macOS)
 	if [[ "$OSTYPE" == "darwin"* ]]; then
-		xattr -dr com.apple.quarantine "$FOUNT_DIR"
+		xattr -dr com.apple.quarantine "$FOUNT_DIR" || true
 	fi
 	find "$FOUNT_DIR" -name "*.sh" -exec chmod +x {} \;
 	find "$FOUNT_DIR/path" -type f -exec chmod +x {} \;
