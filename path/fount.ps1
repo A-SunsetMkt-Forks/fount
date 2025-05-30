@@ -361,7 +361,7 @@ function fount_upgrade {
 		Write-Host "Fount repository not found, cloning..."
 		Remove-Item -Path "$FOUNT_DIR/.git-clone" -Recurse -Force -ErrorAction SilentlyContinue
 		New-Item -ItemType Directory -Path "$FOUNT_DIR/.git-clone" | Out-Null
-		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1
+		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1 --single-branch
 		if ($LASTEXITCODE -ne 0) {
 			Write-Error "Error: Failed to clone fount repository. Check connection or configuration."
 			exit 1
