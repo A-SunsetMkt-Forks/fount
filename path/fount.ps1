@@ -600,7 +600,7 @@ if (!(Test-Path -Path "$FOUNT_DIR/node_modules") -or ($args.Count -gt 0 -and $ar
 
 	# 运行一次 shutdown，以确保所有服务都已停止，并处理可能的首次运行错误
 	# 模仿 Bash 脚本的行为，即使失败也继续
-	run shutdown 2>$null || $true
+	run shutdown
 
 	Write-Host "======================================================" -ForegroundColor Green
 	Write-Warning "DO NOT install any untrusted fount parts on your system, they can do ANYTHING."
