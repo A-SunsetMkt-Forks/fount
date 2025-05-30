@@ -4,6 +4,9 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 FOUNT_DIR=$(dirname "$SCRIPT_DIR")
 
+# 转义后的Fount路径用于sed
+ESCAPED_FOUNT_DIR=$(echo "$FOUNT_DIR" | sed 's/\//\\\//g')
+
 # 自动安装包列表文件及标记文件
 INSTALLER_DATA_DIR="$FOUNT_DIR/data/installer"
 INSTALLED_SYSTEM_PACKAGES_FILE="$INSTALLER_DATA_DIR/auto_installed_system_packages"
@@ -272,6 +275,10 @@ create_desktop_shortcut() {
 
 	if [ "$OS_TYPE" = "Linux" ]; then
 		local desktop_file_path="$HOME/.local/share/applications/$shortcut_name.desktop"
+		if [ -f "$desktop_file_path" ]; then
+			echo "Removing old desktop shortcut at $desktop_file_path"
+			rm "$desktop_file_path"
+		fi
 		mkdir -p "$(dirname "$desktop_file_path")"
 		cat <<EOF > "$desktop_file_path"
 [Desktop Entry]
@@ -314,8 +321,15 @@ EOF
 	elif [ "$OS_TYPE" = "Darwin" ]; then # macOS
 		local app_path="$HOME/Desktop/$shortcut_name.app"
 		local icns_path="$FOUNT_DIR/src/public/favicon.icns"
-		local compiled_applescript_path="$app_path/Contents/MacOS/fount-launcher"
+		local macos_launcher_path="$app_path/Contents/MacOS/fount-launcher"
+		# 已编译的 AppleScript 将放在 Resources 目录
+		local compiled_applescript_in_resources="$app_path/Contents/Resources/fount-launcher.scpt"
 		local temp_applescript_file="/tmp/fount_launcher_script.applescript"
+
+		if [ -d "$app_path" ]; then
+			echo "Removing old macOS application bundle at $app_path"
+			rm -rf "$app_path"
+		fi
 
 		echo "Creating macOS application bundle at $app_path"
 
@@ -346,8 +360,7 @@ EOF
 			icon_name="favicon.icns"
 		fi
 
-
-		# 3. 创建 Info.plist 文件
+		# 3. 创建 Info.plist 文件 (CFBundleExecutable 指向新的 shell 脚本)
 		cat <<EOF > "$app_path/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -356,7 +369,7 @@ EOF
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>fount-launcher</string> <!-- Points to our compiled AppleScript -->
+	<string>fount-launcher</string> <!-- Points to our new shell script launcher -->
 	<key>CFBundleIconFile</key>
 	<string>$icon_name</string>
 	<key>CFBundleIdentifier</key>
@@ -378,7 +391,7 @@ EOF
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>LSUIElement</key>
-	<false/> <!-- Set to false to show a dock icon and application window -->
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -394,15 +407,18 @@ EOF
 </plist>
 EOF
 
-		# 4. 创建 AppleScript 启动器
+		# 4. 创建 AppleScript 启动器内容的临时文件 (这部分不变)
 		cat <<EOF > "$temp_applescript_file"
 on run argv
-	-- 获取当前应用包的路径 (fount.app/Contents/MacOS/fount-launcher)
-	set app_executable_path to POSIX path of (path to me)
+	-- 获取当前应用包的路径 (fount.app/Contents/MacOS/fount-launcher 或 fount.app/Contents/Resources/fount-launcher.scpt)
+	-- 注意：这里的 path to me 会根据 osascript 执行的脚本来。如果直接执行 .scpt，则 path to me 是 .scpt 的路径。
+	-- 我们将这个 AppleScript 作为通用逻辑，由外部的 shell 脚本调用。
+	-- 所以这里的 fount_dir_path 需要直接从 shell 脚本传入或硬编码。
+	-- 这里使用硬编码的 "$FOUNT_DIR" 是正确的。
 	set fount_dir_path to POSIX path of "$FOUNT_DIR"
 
 	-- 构建要执行的实际 fount 脚本的完整路径
-	set fount_command_path to fount_dir_path & "path/fount"
+	set fount_command_path to fount_dir_path & "/path/fount"
 	set command_to_execute to quoted form of fount_command_path
 
 	-- 如果没有传递任何参数，默认执行 'open keepalive'
@@ -426,12 +442,9 @@ on run argv
 end run
 EOF
 
-		# 5. 编译 AppleScript
-		# osacompile 命令会将 .applescript 文件编译成可执行的脚本文件。
-		# -o 参数指定输出文件路径
-		# -x 参数使得输出文件在执行时不需要调用 osascript
+		# 5. 编译 AppleScript 到 Resources 目录
 		if command -v osacompile &> /dev/null; then
-			osacompile -o "$compiled_applescript_path" "$temp_applescript_file"
+			osacompile -o "$compiled_applescript_in_resources" "$temp_applescript_file"
 			if [ $? -ne 0 ]; then
 				echo "Error: Failed to compile AppleScript. Cannot create macOS app shortcut." >&2
 				rm -rf "$app_path"
@@ -445,11 +458,26 @@ EOF
 			return 1
 		fi
 
-		# 6. 清理临时文件
-		rm "$temp_applescript_file"
+		# 6. 创建真正的 fount-launcher shell 脚本
+		cat <<EOF > "$macos_launcher_path"
+#!/bin/bash
+# 这个脚本是 fount.app 的入口点，它会调用 osascript 来执行已编译的 AppleScript。
+
+# 获取当前 shell 脚本的目录
+SCRIPT_DIR="\$(dirname "\$0")"
+
+# 已编译的 AppleScript 文件路径 (相对于这个 shell 脚本的路径)
+COMPILED_APPLESCRIPT_PATH="\$SCRIPT_DIR/../Resources/fount-launcher.scpt"
+
+# 将所有命令行参数传递给 AppleScript
+# osascript 会自动处理参数传递给 AppleScript 的 'run argv' handler
+osascript "\$COMPILED_APPLESCRIPT_PATH" "\$@"
+
+EOF
 
 		# 7. 确保应用可执行权限 (Recursive)
 		chmod -R u+rwx "$app_path"
+		xattr -dr com.apple.quarantine "$app_path"
 
 		# 8. 刷新 LaunchServices 数据库以注册协议和图标
 		local LSREGISTER_PATH="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
@@ -519,7 +547,7 @@ remove_desktop_shortcut() {
 
 # 将 fount 路径添加到 PATH (如果尚未添加)
 ensure_fount_path() {
-	if ! command -v fount &> /dev/null; then
+	if ! command -v fount.sh &> /dev/null; then
 		local profile_file="$HOME/.profile"
 		if [[ "$SHELL" == *"/zsh" ]]; then
 			profile_file="$HOME/.zshrc"
@@ -538,6 +566,16 @@ ensure_fount_path() {
 
 		if ! grep -q "export PATH=.*$FOUNT_DIR/path" "$profile_file" 2>/dev/null; then
 			echo "Adding fount path to $profile_file..."
+			# remove old fount path first
+			if [ "$OS_TYPE" = "Darwin" ]; then
+				sed -i '' '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
+			else
+				sed -i '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
+			fi
+			# 若profile不是\n结尾，加上
+			if [ "$(tail -c 1 "$profile_file")" != $'\n' ]; then
+				echo >> "$profile_file"
+			fi
 			echo "export PATH=\"\$PATH:$FOUNT_DIR/path\"" >> "$profile_file"
 		fi
 		# 立即更新当前 shell 的 PATH
@@ -622,7 +660,7 @@ fi
 EOF_OPEN_JOB
 
 	# 将剩余参数传递给 fount 运行 (例如 'keepalive')
-	run "${@:2}" # 从第二个参数开始传递给 run 函数
+	$FOUNT_DIR/path/fount.sh "${@:2}" # 从第二个参数开始传递给fount
 	exit $? # 确保在后台进程启动后，主脚本可以退出
 # 处理 'background' 参数
 elif [[ $# -gt 0 && $1 = 'background' ]]; then
@@ -716,7 +754,7 @@ else
 fi
 EOF_PROTOCOL_JOB
 
-	run "${@:3}"
+	$FOUNT_DIR/path/fount.sh "${@:3}"
 	exit $?
 fi
 
@@ -736,7 +774,7 @@ fount_upgrade() {
 		echo "Fount repository not found, cloning..."
 		rm -rf "$FOUNT_DIR/.git-clone"  # 移除任何旧的 .git-clone 目录
 		mkdir -p "$FOUNT_DIR/.git-clone"
-		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1
+		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1 --single-branch
 		if [ $? -ne 0 ]; then
 			echo "Error: Failed to clone fount repository. Check connection or configuration." >&2
 			exit 1
@@ -819,6 +857,10 @@ fi
 # 对于非 Termux 环境，如果 Deno 不存在，则安装。
 # 对于 Termux 环境，如果 ~/.deno/bin/deno.glibc.sh 不存在，则安装。
 install_deno() {
+	# 若没有deno但有$HOME/.deno/env
+	if [[ -z "$(command -v deno)" && -f "$HOME/.deno/env" ]]; then
+		. "$HOME/.deno/env"
+	fi
 	if [[ ($IN_TERMUX -eq 0 && -z "$(command -v deno)") || ($IN_TERMUX -eq 1 && ! -f ~/.deno/bin/deno.glibc.sh) ]]; then
 		if [[ $IN_TERMUX -eq 1 ]]; then
 			echo "Installing Deno for Termux..."
@@ -882,6 +924,10 @@ install_deno() {
 				profile_file_deno="$HOME/.profile"
 			fi
 
+			# 若profile不是\n结尾，加上
+			if [ "$(tail -c 1 "$profile_file_deno")" != $'\n' ]; then
+				echo >> "$profile_file_deno"
+			fi
 			if ! grep -q "export DENO_INSTALL=.*" "$profile_file_deno" 2>/dev/null; then
 				echo "export DENO_INSTALL=\"${HOME}/.deno\"" >> "$profile_file_deno"
 			fi
@@ -919,13 +965,6 @@ install_deno() {
 			elif [[ ! -f "$profile_file_deno" ]] && [[ ! -f "$HOME/.profile" ]]; then
 				touch "$HOME/.profile"
 				profile_file_deno="$HOME/.profile"
-			fi
-			# install.sh 脚本会处理 PATH，但确保其持久化
-			if ! grep -q "export DENO_INSTALL=.*" "$profile_file_deno" 2>/dev/null; then
-				echo "export DENO_INSTALL=\"${HOME}/.deno\"" >> "$profile_file_deno"
-			fi
-			if ! grep -q "export PATH=.*${HOME}/.deno/bin" "$profile_file_deno" 2>/dev/null; then
-				echo "export PATH=\"\$PATH:${HOME}/.deno/bin\"" >> "$profile_file_deno"
 			fi
 			source "$profile_file_deno" &> /dev/null # 重新加载 shell 配置文件以更新 PATH (当前会话)
 			export DENO_INSTALL="$HOME/.deno"
@@ -980,25 +1019,7 @@ else
 fi
 
 # 输出 Deno 版本信息
-echo "Deno version: $(run_deno -V)"
-
-# 安装 fount 依赖
-if [[ ! -d "$FOUNT_DIR/node_modules" || ($# -gt 0 && $1 = 'init') ]]; then
-	echo "Installing Fount dependencies..."
-	set +e # 临时禁用严格模式，因为第一次运行可能会失败
-	run_deno install --reload --allow-scripts --allow-all --node-modules-dir=auto --entrypoint "$FOUNT_DIR/src/server/index.mjs"
-	# 不知为何部分环境下第一次跑铁定出错，先跑再说 (模仿 PowerShell 脚本的行为)
-	run_deno run --allow-scripts --allow-all "$FOUNT_DIR/src/server/index.mjs" "shutdown" 2>/dev/null || true
-	set -e # 重新启用严格模式
-
-	if [ $IN_DOCKER -eq 0 ] && [ $IN_TERMUX -eq 0 ]; then
-		create_desktop_shortcut # 现在这个函数会同时处理快捷方式和协议注册
-	fi
-
-	echo "======================================================"
-	echo "WARNING: DO NOT install any untrusted fount parts on your system, they can do ANYTHING."
-	echo "======================================================"
-fi
+echo "$(run_deno -V)"
 
 # 函数: 运行 fount
 run() {
@@ -1026,6 +1047,27 @@ run() {
 		export LANG="$LANG_BACKUP"
 	fi
 }
+
+# 安装 fount 依赖
+if [[ ! -d "$FOUNT_DIR/node_modules" || ($# -gt 0 && $1 = 'init') ]]; then
+	if [[ -d "$FOUNT_DIR/node_modules" ]]; then
+		run "shutdown"
+	fi
+	echo "Installing Fount dependencies..."
+	set +e # 临时禁用严格模式，因为第一次运行可能会失败
+	run_deno install --reload --allow-scripts --allow-all --node-modules-dir=auto --entrypoint "$FOUNT_DIR/src/server/index.mjs"
+	# 不知为何部分环境下第一次跑铁定出错，先跑再说 (模仿 PowerShell 脚本的行为)
+	run_deno run --allow-scripts --allow-all "$FOUNT_DIR/src/server/index.mjs" "shutdown" 2>/dev/null || true
+	set -e # 重新启用严格模式
+
+	if [ $IN_DOCKER -eq 0 ] && [ $IN_TERMUX -eq 0 ]; then
+		create_desktop_shortcut # 现在这个函数会同时处理快捷方式和协议注册
+	fi
+
+	echo "======================================================"
+	echo "WARNING: DO NOT install any untrusted fount parts on your system, they can do ANYTHING."
+	echo "======================================================"
+fi
 
 # 主要参数处理逻辑
 if [[ $# -gt 0 ]]; then
@@ -1056,13 +1098,9 @@ if [[ $# -gt 0 ]]; then
 				if [ -f "$profile_file" ]; then
 					# macOS sed needs empty string, Linux sed doesn't
 					if [ "$OS_TYPE" = "Darwin" ]; then
-						sed -i '' '/export PATH="\$PATH:'"$FOUNT_DIR/path"'"/d' "$profile_file"
-						sed -i '' '/export DENO_INSTALL=".*\.deno"/d' "$profile_file"
-						sed -i '' '/export PATH="\$PATH:.*\.deno\/bin"/d' "$profile_file"
+						sed -i '' '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
 					else
-						sed -i '/export PATH="\$PATH:'"$FOUNT_DIR/path"'"/d' "$profile_file"
-						sed -i '/export DENO_INSTALL=".*\.deno"/d' "$profile_file"
-						sed -i '/export PATH="\$PATH:.*\.deno\/bin"/d' "$profile_file"
+						sed -i '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
 					fi
 					echo "Cleaned PATH entries in $profile_file."
 				fi
@@ -1097,11 +1135,17 @@ if [[ $# -gt 0 ]]; then
 					rm -rf "$HOME/.deno"
 					echo "Deno installation directory $HOME/.deno removed."
 				fi
-				# 移除 Termux specific deno.glibc.sh wrapper
-				if [ -f "$HOME/.deno/bin/deno.glibc.sh" ]; then
-					rm "$HOME/.deno/bin/deno.glibc.sh"
-					echo "Removed Termux deno.glibc.sh wrapper."
-				fi
+				for profile_file in "${profile_files[@]}"; do
+					if [ -f "$profile_file" ]; then
+						# macOS sed needs empty string, Linux sed doesn't
+						if [ "$OS_TYPE" = "Darwin" ]; then
+							sed -i '' '/\.deno/d' "$profile_file"
+						else
+							sed -i '/\.deno/d' "$profile_file"
+						fi
+						echo "Cleaned PATH entries in $profile_file."
+					fi
+				done
 				rm -f "$AUTO_INSTALLED_DENO_FLAG"
 			fi
 

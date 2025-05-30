@@ -81,7 +81,7 @@ if ! command -v fount.sh &> /dev/null; then
 
 	# 尝试使用 git 克隆
 	if command -v git &> /dev/null; then
-		git clone https://github.com/steve02081504/fount "$FOUNT_DIR" --depth 1
+		git clone https://github.com/steve02081504/fount "$FOUNT_DIR" --depth 1 --single-branch
 		if [[ $? -ne 0 ]]; then
 			echo "下载错误，终止脚本" >&2
 			exit 1
@@ -106,7 +106,7 @@ if ! command -v fount.sh &> /dev/null; then
 	fi
 	# 移除隔离属性 (仅限 macOS)
 	if [[ "$OSTYPE" == "darwin"* ]]; then
-		xattr -dr com.apple.quarantine "$FOUNT_DIR"
+		xattr -dr com.apple.quarantine "$FOUNT_DIR" || true
 	fi
 	find "$FOUNT_DIR" -name "*.sh" -exec chmod +x {} \;
 	find "$FOUNT_DIR/path" -type f -exec chmod +x {} \;
