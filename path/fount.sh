@@ -979,23 +979,82 @@ install_deno() {
 			# 非 Termux 环境下的普通安装
 			echo "Deno not found, attempting to install..."
 			curl -fsSL https://deno.land/install.sh | sh -s -- -y
-			# 处理 PATH 和 DENO_INSTALL 环境变量的持久化
-			local profile_file_deno="$HOME/.profile"
-			if [[ "$SHELL" == *"/zsh" ]]; then
-				profile_file_deno="$HOME/.zshrc"
-			elif [[ "$SHELL" == *"/bash" ]]; then
-				profile_file_deno="$HOME/.bashrc"
+			if [ $? -ne 0 ]; then
+				echo "Deno standard installation script failed. Attempting direct download to fount's path folder..."
+
+				local deno_dl_url="https://github.com/denoland/deno/releases/latest/download/deno-"
+				local arch_target=""
+				local current_arch=$(uname -m)
+
+				case "$OS_TYPE" in
+					Linux*)
+						# PWSH版本Linux默认x86_64，这里也遵循，除非明确需要其他架构
+						arch_target="x86_64-unknown-linux-gnu.zip"
+						if [ "$current_arch" = "aarch64" ]; then
+							arch_target="aarch64-unknown-linux-gnu.zip"
+						else
+							arch_target="x86_64-unknown-linux-gnu.zip"
+						fi
+						;;
+					Darwin*)
+						if [ "$current_arch" = "arm64" ]; then
+							arch_target="aarch64-apple-darwin.zip"
+						else
+							arch_target="x86_64-apple-darwin.zip"
+						fi
+						;;
+					*)
+						echo "Warning: Unknown OS type: $(uname -s). Defaulting to x86_64-unknown-linux-gnu.zip for manual download." >&2
+						arch_target="x86_64-unknown-linux-gnu.zip"
+						;;
+				esac
+				deno_dl_url="${deno_dl_url}${arch_target}"
+
+				local TEMP_DIR="/tmp"
+				mkdir -p "$FOUNT_DIR/path"
+
+				if ! command -v unzip &> /dev/null; then
+					echo "'unzip' command not found. Attempting to install..."
+					install_package unzip
+					if ! command -v unzip &> /dev/null; then
+						echo "Error: Failed to install 'unzip'. Cannot proceed with Deno installation." >&2
+						exit 1
+					fi
+				fi
+
+				if ! curl -fL -o "$TEMP_DIR/deno.zip" "$deno_dl_url"; then
+					echo "Error: Failed to download Deno from $deno_dl_url." >&2
+					exit 1
+				fi
+
+				if ! unzip -o "$TEMP_DIR/deno.zip" -d "$FOUNT_DIR/path"; then
+					echo "Error: Failed to extract Deno archive to $FOUNT_DIR/path." >&2
+					rm "$TEMP_DIR/deno.zip"
+					exit 1
+				fi
+				rm "$TEMP_DIR/deno.zip"
+
+				chmod +x "$FOUNT_DIR/path/deno"
+				export PATH="$PATH:$FOUNT_DIR/path"
+			else
+				# 处理 PATH 和 DENO_INSTALL 环境变量的持久化
+				local profile_file_deno="$HOME/.profile"
+				if [[ "$SHELL" == *"/zsh" ]]; then
+					profile_file_deno="$HOME/.zshrc"
+				elif [[ "$SHELL" == *"/bash" ]]; then
+					profile_file_deno="$HOME/.bashrc"
+				fi
+				if [[ ! -f "$profile_file_deno" ]] && [[ -f "$HOME/.profile" ]]; then
+					profile_file_deno="$HOME/.profile"
+				elif [[ ! -f "$profile_file_deno" ]] && [[ ! -f "$HOME/.profile" ]]; then
+					touch "$HOME/.profile"
+					profile_file_deno="$HOME/.profile"
+				fi
+				source "$profile_file_deno" &> /dev/null # 重新加载 shell 配置文件以更新 PATH (当前会话)
+				export DENO_INSTALL="$HOME/.deno"
+				export PATH="$PATH:$DENO_INSTALL/bin"
+				touch "$AUTO_INSTALLED_DENO_FLAG" # 标记为自动安装
 			fi
-			if [[ ! -f "$profile_file_deno" ]] && [[ -f "$HOME/.profile" ]]; then
-				profile_file_deno="$HOME/.profile"
-			elif [[ ! -f "$profile_file_deno" ]] && [[ ! -f "$HOME/.profile" ]]; then
-				touch "$HOME/.profile"
-				profile_file_deno="$HOME/.profile"
-			fi
-			source "$profile_file_deno" &> /dev/null # 重新加载 shell 配置文件以更新 PATH (当前会话)
-			export DENO_INSTALL="$HOME/.deno"
-			export PATH="$PATH:$DENO_INSTALL/bin"
-			touch "$AUTO_INSTALLED_DENO_FLAG" # 标记为自动安装
 		fi
 
 		# 最终检查，如果还是找不到 Deno，则退出
