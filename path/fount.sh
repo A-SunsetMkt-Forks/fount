@@ -588,22 +588,26 @@ remove_desktop_shortcut() {
 # 将 fount 路径添加到 PATH (如果尚未添加)
 ensure_fount_path() {
 	if ! command -v fount.sh &> /dev/null; then
-		local profile_file="$HOME/.profile"
-
-		if ! grep -q "export PATH=.*$FOUNT_DIR/path" "$profile_file" 2>/dev/null; then
-			echo "Adding fount path to $profile_file..."
-			# remove old fount path first
-			if [ "$OS_TYPE" = "Darwin" ]; then
-				sed -i '' '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
-			else
-				sed -i '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
+		local profile_files=("$HOME/.profile" "$HOME/.bashrc" "$HOME/.zshrc")
+		for profile_file in "${profile_files[@]}"; do
+			if ! grep -q "export PATH=.*$FOUNT_DIR/path" "$profile_file" 2>/dev/null; then
+				echo "Adding fount path to $profile_file..."
+				if [! -f "$profile_file" ]; then
+					touch "$profile_file"
+				fi
+				# remove old fount path first
+				if [ "$OS_TYPE" = "Darwin" ]; then
+					sed -i '' '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
+				else
+					sed -i '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
+				fi
+				# 若profile不是\n结尾，加上
+				if [ "$(tail -c 1 "$profile_file")" != $'\n' ]; then
+					echo >> "$profile_file"
+				fi
+				echo "export PATH=\"\$PATH:$FOUNT_DIR/path\"" >> "$profile_file"
 			fi
-			# 若profile不是\n结尾，加上
-			if [ "$(tail -c 1 "$profile_file")" != $'\n' ]; then
-				echo >> "$profile_file"
-			fi
-			echo "export PATH=\"\$PATH:$FOUNT_DIR/path\"" >> "$profile_file"
-		fi
+		done
 		# 立即更新当前 shell 的 PATH
 		export PATH="$PATH:$FOUNT_DIR/path"
 	fi
