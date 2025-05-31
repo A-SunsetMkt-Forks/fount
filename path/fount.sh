@@ -588,22 +588,26 @@ remove_desktop_shortcut() {
 # 将 fount 路径添加到 PATH (如果尚未添加)
 ensure_fount_path() {
 	if ! command -v fount.sh &> /dev/null; then
-		local profile_file="$HOME/.profile"
-
-		if ! grep -q "export PATH=.*$FOUNT_DIR/path" "$profile_file" 2>/dev/null; then
-			echo "Adding fount path to $profile_file..."
-			# remove old fount path first
-			if [ "$OS_TYPE" = "Darwin" ]; then
-				sed -i '' '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
-			else
-				sed -i '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
+		local profile_files=("$HOME/.profile" "$HOME/.bashrc" "$HOME/.zshrc")
+		for profile_file in "${profile_files[@]}"; do
+			if ! grep -q "export PATH=.*$FOUNT_DIR/path" "$profile_file" 2>/dev/null; then
+				echo "Adding fount path to $profile_file..."
+				if [! -f "$profile_file" ]; then
+					touch "$profile_file"
+				fi
+				# remove old fount path first
+				if [ "$OS_TYPE" = "Darwin" ]; then
+					sed -i '' '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
+				else
+					sed -i '/export PATH="\$PATH:'"$ESCAPED_FOUNT_DIR\/path"'"/d' "$profile_file"
+				fi
+				# 若profile不是\n结尾，加上
+				if [ "$(tail -c 1 "$profile_file")" != $'\n' ]; then
+					echo >> "$profile_file"
+				fi
+				echo "export PATH=\"\$PATH:$FOUNT_DIR/path\"" >> "$profile_file"
 			fi
-			# 若profile不是\n结尾，加上
-			if [ "$(tail -c 1 "$profile_file")" != $'\n' ]; then
-				echo >> "$profile_file"
-			fi
-			echo "export PATH=\"\$PATH:$FOUNT_DIR/path\"" >> "$profile_file"
-		fi
+		done
 		# 立即更新当前 shell 的 PATH
 		export PATH="$PATH:$FOUNT_DIR/path"
 	fi
@@ -879,34 +883,33 @@ else
 	fount_upgrade
 fi
 
-# 检查 Bun 安装
-# 对于非 Termux 环境，如果 Bun 不存在，则安装。
-# 对于 Termux 环境，如果 ~/.bun/bin/bun.glibc.sh 不存在，则安装。
-install_bun() {
-	# 若没有bun但有$HOME/.bun/env
+# Bun 安装
+function install_bun() {
+	# 若没有 bun 但有 $HOME/.bun/env，则尝试 source
 	if [[ -z "$(command -v bun)" && -f "$HOME/.bun/env" ]]; then
 		. "$HOME/.bun/env"
 	fi
-	if [[ ($IN_TERMUX -eq 0 && -z "$(command -v bun)") || ($IN_TERMUX -eq 1 && ! -f ~/.bun/bin/bun.glibc.sh) ]]; then
-		if [[ $IN_TERMUX -eq 1 ]]; then
-			echo "Installing Bun for Termux..."
-			# 安装 glibc-runner，并记录它是否被自动安装
-			if ! command -v glibc-runner &> /dev/null; then
-				set -e # 启用严格模式，遇到错误立即退出
 
-				# 升级 pkg，安装必要的工具
+	# 检查 Bun 是否已安装并可运行 (非 Termux 环境下检查 `bun` 命令，Termux 环境下检查 `bun.glibc.sh` 包装器)
+	if [[ ($IN_TERMUX -eq 0 && -z "$(command -v bun)") || ($IN_TERMUX -eq 1 && ! -f ~/.bun/bin/bun.glibc.sh) ]]; then
+		echo "Bun missing, attempting to install..."
+		local bun_successfully_installed=0 # Flag to track if bun was installed by any method
+
+		if [[ $IN_TERMUX -eq 1 ]]; then
+			# Termux specific installation (keep existing logic)
+			echo "Installing Bun for Termux..."
+			# Installation of glibc-runner and other prerequisites
+			if ! command -v glibc-runner &> /dev/null; then
+				set -e # Enable strict mode
 				yes y | pkg upgrade -y
 				pkg install -y pacman patchelf which time ldd tree
+				add_package_to_tracker "patchelf" "INSTALLED_SYSTEM_PACKAGES_ARRAY"
+				add_package_to_tracker "which" "INSTALLED_SYSTEM_PACKAGES_ARRAY"
+				add_package_to_tracker "time" "INSTALLED_SYSTEM_PACKAGES_ARRAY"
+				add_package_to_tracker "ldd" "INSTALLED_SYSTEM_PACKAGES_ARRAY"
+				add_package_to_tracker "tree" "INSTALLED_SYSTEM_PACKAGES_ARRAY"
+				add_package_to_tracker "pacman" "INSTALLED_SYSTEM_PACKAGES_ARRAY"
 
-				# 检查并跟踪 Termux 系统包
-				if ! command -v patchelf &> /dev/null; then add_package_to_tracker "patchelf" "INSTALLED_SYSTEM_PACKAGES_ARRAY"; fi
-				if ! command -v which &> /dev/null; then add_package_to_tracker "which" "INSTALLED_SYSTEM_PACKAGES_ARRAY"; fi
-				if ! command -v time &> /dev/null; then add_package_to_tracker "time" "INSTALLED_SYSTEM_PACKAGES_ARRAY"; fi
-				if ! command -v ldd &> /dev/null; then add_package_to_tracker "ldd" "INSTALLED_SYSTEM_PACKAGES_ARRAY"; fi
-				if ! command -v tree &> /dev/null; then add_package_to_tracker "tree" "INSTALLED_SYSTEM_PACKAGES_ARRAY"; fi
-				if ! command -v pacman &> /dev/null; then add_package_to_tracker "pacman" "INSTALLED_SYSTEM_PACKAGES_ARRAY"; fi
-
-				# 初始化和更新 pacman
 				pacman-key --init
 				pacman-key --populate
 				pacman -Syu --noconfirm
@@ -915,85 +918,142 @@ install_bun() {
 				if [ $? -eq 0 ]; then
 					add_package_to_tracker "glibc-runner" "INSTALLED_PACMAN_PACKAGES_ARRAY"
 				fi
-				set +e # 关闭严格模式
+				set +e # Disable strict mode
 			fi
 
-			# 安装 Bun.js
-			curl -fsSL https://bun.sh/install | sh -s -- -y
-			BUN_INSTALL="${HOME}/.bun"
-			BUN_BIN_PATH="${BUN_INSTALL}/bin/bun"
-
-			# 显式设置可执行权限
-			chmod +x "$BUN_BIN_PATH"
-
-			# 处理 PATH 和 BUN_INSTALL 环境变量的持久化
-			local profile_file_bun="$HOME/.profile"
-			if [[ "$SHELL" == *"/zsh" ]]; then
-				profile_file_bun="$HOME/.zshrc"
-			elif [[ "$SHELL" == *"/bash" ]]; then
-				profile_file_bun="$HOME/.bashrc"
-			fi
-			if [[ ! -f "$profile_file_bun" ]] && [[ -f "$HOME/.profile" ]]; then
-				profile_file_bun="$HOME/.profile"
-			elif [[ ! -f "$profile_file_bun" ]] && [[ ! -f "$HOME/.profile" ]]; then
-				touch "$HOME/.profile"
-				profile_file_bun="$HOME/.profile"
+			# Attempt official Bun installation for Termux
+			if curl -fsSL https://bun.sh/install | sh -s -- -y; then
+				echo "Bun installed via official script for Termux."
+				bun_successfully_installed=1
+			else
+				echo "Warning: Bun installation via official script failed in Termux ($?). Manual installation might be problematic due to glibc requirements. Please check manually." >&2
+				# No manual download fallback here for Termux.
 			fi
 
-			# 若profile不是\n结尾，加上
-			if [ "$(tail -c 1 "$profile_file_bun")" != $'\n' ]; then
-				echo >> "$profile_file_bun"
-			fi
-			if ! grep -q "export BUN_INSTALL=.*" "$profile_file_bun" 2>/dev/null; then
-				echo "export BUN_INSTALL=\"${HOME}/.bun\"" >> "$profile_file_bun"
-			fi
-			if ! grep -q "export PATH=.*${HOME}/.bun/bin" "$profile_file_bun" 2>/dev/null; then
-				echo "export PATH=\"\$PATH:${HOME}/.bun/bin\"" >> "$profile_file_bun"
-			fi
-			# 重新加载 shell 配置文件以更新 PATH (当前会话)
-			source "$profile_file_bun" &> /dev/null
+			if [[ $bun_successfully_installed -eq 1 ]]; then
+				local BUN_INSTALL="${HOME}/.bun"
+				local BUN_BIN_PATH="${BUN_INSTALL}/bin/bun"
+				chmod +x "$BUN_BIN_PATH" # Ensure executable
 
-			# 尝试使用 glibc-runner 运行 Bun，使用绝对路径(在 source 之后)
-			if [ -n "$(which glibc-runner 2>/dev/null)" ]; then # 确保 glibc-runner 存在
-				if ! "$(which glibc-runner)" "$BUN_BIN_PATH" -V &> /dev/null; then
-					echo "Error: Bun failed to execute with glibc-runner after initial install. Removing incomplete installation." >&2
-					rm -rf "$BUN_INSTALL"
-					exit 1  # 首次运行失败直接退出
+				# Path persistence for Termux (original logic)
+				local profile_file_bun="$HOME/.profile"
+				if [[ "$SHELL" == *"/zsh" ]]; then profile_file_bun="$HOME/.zshrc";
+				elif [[ "$SHELL" == *"/bash" ]]; then profile_file_bun="$HOME/.bashrc";
 				fi
+				if [[ ! -f "$profile_file_bun" ]] && [[ -f "$HOME/.profile" ]]; then profile_file_bun="$HOME/.profile";
+				elif [[ ! -f "$profile_file_bun" ]] && [[ ! -f "$HOME/.profile" ]]; then touch "$HOME/.profile"; profile_file_bun="$HOME/.profile";
+				fi
+
+				if [ "$(tail -c 1 "$profile_file_bun")" != $'\n' ]; then echo >> "$profile_file_bun"; fi
+				if ! grep -q "export BUN_INSTALL=.*" "$profile_file_bun" 2>/dev/null; then echo "export BUN_INSTALL=\"${HOME}/.bun\"" >> "$profile_file_bun"; fi
+				if ! grep -q "export PATH=.*${HOME}/.bun/bin" "$profile_file_bun" 2>/dev/null; then echo "export PATH=\"\$PATH:${HOME}/.bun/bin\"" >> "$profile_file_bun"; fi
+				source "$profile_file_bun" &> /dev/null
+
+				# Test Bun with glibc-runner if available
+				if [ -n "$(which glibc-runner 2>/dev/null)" ]; then
+					if ! "$(which glibc-runner)" "$BUN_BIN_PATH" -V &> /dev/null; then
+						echo "Error: Bun failed to execute with glibc-runner after initial install. Removing incomplete installation." >&2
+						rm -rf "$BUN_INSTALL"
+						exit 1 # Exit on critical failure for Termux
+					fi
+				fi
+				patch_bun # Apply patch
+				mkdir -p "$INSTALLER_DATA_DIR" # Ensure directory exists for flag
+				touch "$AUTO_INSTALLED_BUN_FLAG" # Mark as auto-installed
 			fi
 
-			# 为 Bun.js 打补丁 (Termux)
-			patch_bun
-			touch "$AUTO_INSTALLED_BUN_FLAG" # 标记为自动安装
 		else
-			# 非 Termux 环境下的普通安装
-			echo "Bun not found, attempting to install..."
-			curl -fsSL https://bun.sh/install | sh -s -- -y
-			# 处理 PATH 和 BUN_INSTALL 环境变量的持久化
-			local profile_file_bun="$HOME/.profile"
-			if [[ "$SHELL" == *"/zsh" ]]; then
-				profile_file_bun="$HOME/.zshrc"
-			elif [[ "$SHELL" == *"/bash" ]]; then
-				profile_file_bun="$HOME/.bashrc"
+			# Non-Termux environment
+			echo "Bun not found, attempting to install via official script..."
+			if curl -fsSL https://bun.sh/install | sh -s -- -y; then
+				echo "Bun installed via official script."
+				bun_successfully_installed=1
+			else
+				echo "Bun installation via official script failed ($?). Attempting manual installation to fount's path folder..." >&2
+
+				local bun_dl_url="https://github.com/oven-sh/bun/releases/latest/download/bun-"
+				local arch_target=""
+				local current_arch=$(uname -m)
+
+				case "$OS_TYPE" in
+					Linux*)
+						if [ "$current_arch" = "aarch64" ]; then
+							arch_target="linux-aarch64.zip"
+						elif [ "$current_arch" = "x86_64" ]; then
+							arch_target="linux-x64-baseline.zip"
+						else
+							echo "Warning: Unsupported Linux architecture ($current_arch) for Bun manual download. Defaulting to x64." >&2
+							arch_target="linux-x64-baseline.zip" # Fallback
+						fi
+						;;
+					Darwin*)
+						if [ "$current_arch" = "arm64" ]; then
+							arch_target="darwin-aarch64.zip"
+						elif [ "$current_arch" = "x86_64" ]; then
+							arch_target="darwin-x64.zip"
+						else
+							echo "Warning: Unsupported macOS architecture ($current_arch) for Bun manual download. Defaulting to x64." >&2
+							arch_target="darwin-x64.zip" # Fallback
+						fi
+						;;
+					*)
+						echo "Warning: Unknown OS type ($OS_TYPE). Defaulting to linux-x64-baseline.zip for manual download." >&2
+						arch_target="linux-x64-baseline.zip"
+						;;
+				esac
+				bun_dl_url="${bun_dl_url}${arch_target}"
+
+				local TEMP_DIR="/tmp"
+				mkdir -p "$FOUNT_DIR/path"
+
+				# Ensure unzip is available
+				if ! command -v unzip &> /dev/null; then
+					echo "'unzip' command not found. Attempting to install 'unzip'..."
+					install_package unzip # Use the existing install_package function
+					if ! command -v unzip &> /dev/null; then
+						echo "Error: Failed to install 'unzip'. Cannot proceed with Bun manual installation." >&2
+						exit 1 # Exit if unzip cannot be installed
+					fi
+				fi
+
+				echo "Downloading Bun from $bun_dl_url..."
+				if curl -fL -o "$TEMP_DIR/bun.zip" "$bun_dl_url"; then
+					echo "Extracting Bun to $FOUNT_DIR/path..."
+					if unzip -o "$TEMP_DIR/bun.zip" -d "$FOUNT_DIR/path"; then
+						rm "$TEMP_DIR/bun.zip" # Clean up temp file
+						chmod +x "$FOUNT_DIR/path/bun" # Ensure executable permissions
+						echo "Bun manually installed to $FOUNT_DIR/path."
+						bun_successfully_installed=1 # Mark success
+					else
+						echo "Error: Failed to extract Bun archive to $FOUNT_DIR/path." >&2
+						rm -f "$TEMP_DIR/bun.zip" # Clean up temp file on failure
+					fi
+				else
+					echo "Error: Failed to download Bun from $bun_dl_url." >&2
+				fi
+			fi # End of official script or manual download attempt for non-Termux
+
+			# If Bun was successfully installed by any method in non-Termux, mark it
+			if [[ $bun_successfully_installed -eq 1 ]]; then
+				mkdir -p "$INSTALLER_DATA_DIR" # Ensure directory exists for flag
+				touch "$AUTO_INSTALLED_BUN_FLAG" # Mark as auto-installed
+				# No explicit PATH export/profile modification needed here for non-Termux.
+				# Official bun install adds to ~/.bun/bin and updates profile.
+				# Manual install to FOUNT_DIR/path is handled by ensure_fount_path.
 			fi
-			if [[ ! -f "$profile_file_bun" ]] && [[ -f "$HOME/.profile" ]]; then
-				profile_file_bun="$HOME/.profile"
-			elif [[ ! -f "$profile_file_bun" ]] && [[ ! -f "$HOME/.profile" ]]; then
-				touch "$HOME/.profile"
-				profile_file_bun="$HOME/.profile"
-			fi
-			source "$profile_file_bun" &> /dev/null # 重新加载 shell 配置文件以更新 PATH (当前会话)
-			export BUN_INSTALL="$HOME/.bun"
-			export PATH="$PATH:$BUN_INSTALL/bin"
-			touch "$AUTO_INSTALLED_BUN_FLAG" # 标记为自动安装
+		fi # End of Termux vs Non-Termux branch
+
+		# Final check if Bun is installed and runnable after all attempts
+		# Re-source .bun/env in case it was installed to ~/.bun/bin and PATH is not yet updated in current session
+		if [ -f "$HOME/.bun/env" ]; then
+			. "$HOME/.bun/env"
 		fi
 
-		# 最终检查，如果还是找不到 Bun，则退出
 		if ! command -v bun &> /dev/null; then
 			echo "Error: Bun missing, you cannot run fount without bun." >&2
 			exit 1
 		fi
-	fi
+	fi # End of `if bun not found` block
 }
 
 install_bun
@@ -1130,7 +1190,7 @@ if [[ $# -gt 0 ]]; then
 			# 从当前 PATH 环境变量中移除 fount 路径
 			# 注意：这里也移除了 Bun 的路径，因为 Bun 可能是自动安装的
 			export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "$FOUNT_DIR/path" | grep -v "$HOME/.bun/bin" | tr '\n' ':' | sed 's/:*$//') # Remove trailing colon
-			echo "Fount path removed from current PATH."
+			echo "Fount and Bun paths removed from current PATH."
 
 			# 2. 移除桌面快捷方式和协议处理程序
 			remove_desktop_shortcut
