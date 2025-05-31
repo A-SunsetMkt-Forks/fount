@@ -9,7 +9,7 @@ if [[ "$OSTYPE" == "msys" ]]; then
 	exit $?
 fi
 
-INSTALLED_PACKAGES=""
+INSTALLED_PACKAGES="${FOUNT_AUTO_INSTALLED_PACKAGES:-}"
 
 install_package() {
 	# 将当前安装的包添加到列表中
@@ -31,7 +31,6 @@ install_package() {
 		fi
 	elif command -v brew &> /dev/null; then
 		brew install "$1"
-		eval "$(brew shellenv)" || eval "$(/opt/homebrew/bin/brew shellenv)"
 	elif command -v pacman &> /dev/null; then
 		if command -v sudo &> /dev/null; then
 			sudo pacman -Syy

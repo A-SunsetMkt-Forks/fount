@@ -45,54 +45,19 @@ function Test-PWSHModule([string]$ModuleName) {
 	return $true
 }
 
-# fount 路径设置
-# 确保 fount 脚本所在的目录已添加到用户的 PATH 环境变量中
-if (!(Get-Command fount -ErrorAction SilentlyContinue)) {
-	$fountPathEntry = "$FOUNT_DIR\path"
+$auto_installed_pwsh_modules = Get-Content "$FOUNT_DIR/data/installer/auto_installed_pwsh_modules" -Raw -ErrorAction Ignore
+if (!$auto_installed_pwsh_modules) { $auto_installed_pwsh_modules = '' }
+$auto_installed_pwsh_modules = $auto_installed_pwsh_modules.Split(';') | Where-Object { $_ }
 
-	# 更新当前会话的 PATH
-	$currentPath = $env:PATH -split ';'
-	if ($currentPath -notcontains $fountPathEntry) {
-		$currentPath += $fountPathEntry
-		$env:PATH = $currentPath -join ';'
-	}
-
-	# 更新用户环境变量的 PATH
-	$userPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::User)
-	$userPathArray = $userPath -split ';'
-	if ($userPathArray -notcontains $fountPathEntry) {
-		$userPathArray += $fountPathEntry
-		[System.Environment]::SetEnvironmentVariable('PATH', ($userPathArray -join ';'), [System.EnvironmentVariableTarget]::User)
+function Test-PWSHModule([string]$ModuleName) {
+	if (!(Get-Module $ModuleName -ListAvailable)) {
+		$auto_installed_pwsh_modules += $ModuleName
+		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
+		Set-Content "$FOUNT_DIR/data/installer/auto_installed_pwsh_modules" $($auto_installed_pwsh_modules -join ';')
+		Install-Module -Name $ModuleName -Scope CurrentUser -Force
 	}
 }
 
-# fount 协议注册 (Windows Registry)
-# 注册 fount:// 协议，使其可以通过浏览器或其他应用启动 fount
-if (-not $IN_DOCKER) {
-	$protocolName = "fount"
-	$protocolDescription = "URL:fount Protocol"
-	# 使用 fount.bat 作为协议处理程序，因为它是 Windows 上的主入口点
-	$command = "`"$FOUNT_DIR\path\fount.bat`" protocolhandle `"%1`""
-
-	try {
-		Write-Host "Registering fount:// protocol handler..."
-		# 创建目录
-		New-Item -Path "HKCU:\Software\Classes\$protocolName" -Force | Out-Null
-		# 设置协议根键
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "(Default)" -Value $protocolDescription -ErrorAction Stop
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "URL Protocol" -Value "" -ErrorAction Stop
-		# 创建 shell\open\command 子键
-		New-Item -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Force | Out-Null
-		# 设置协议处理命令
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Name "(Default)" -Value $command -ErrorAction Stop
-		Write-Host "fount:// protocol handler registered successfully."
-	}
-	catch {
-		Write-Warning "Failed to register fount:// protocol handler: $($_.Exception.Message)"
-	}
-}
-
-# 处理 'open' 参数：启动 fount 服务并在服务启动后打开网页
 if ($args.Count -gt 0 -and $args[0] -eq 'open') {
 	# 确保 fount-pwsh 模块已安装，该模块包含 Test-FountRunning 函数
 	Test-PWSHModule fount-pwsh | Out-Null
@@ -285,7 +250,36 @@ if ($Profile -and (Get-Module fount-pwsh -ListAvailable)) {
 	}
 }
 
-# fount Windows Terminal 配置文件注册
+
+if (!$IsWindows) {
+	bash $FOUNT_DIR/path/fount.sh @args
+	exit $LastExitCode
+}
+
+# fount 协议注册 (新增)
+if (-not $IN_DOCKER) {
+	$protocolName = "fount"
+	$protocolDescription = "URL:fount Protocol"
+	# 使用 fount.bat 作为协议处理程序，因为它是Windows上的主入口点
+	$command = "`"$FOUNT_DIR\path\fount.bat`" protocolhandle `"%1`""
+
+	try {
+		# 创建目录
+		New-Item -Path "HKCU:\Software\Classes\$protocolName" -Force | Out-Null
+		# 设置协议根键
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "(Default)" -Value $protocolDescription -ErrorAction Stop
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "URL Protocol" -Value "" -ErrorAction Stop
+		# 创建 shell\open\command 子键
+		New-Item -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Force | Out-Null
+		# 设置协议处理命令
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Name "(Default)" -Value $command -ErrorAction Stop
+	}
+	catch {
+		Write-Warning "Failed to register fount:// protocol handler: $($_.Exception.Message)"
+	}
+}
+
+# fount Terminal注册
 $WTjsonDirPath = "$env:LOCALAPPDATA/Microsoft/Windows Terminal/Fragments/fount"
 if (!(Test-Path $WTjsonDirPath)) {
 	New-Item -ItemType Directory -Force -Path $WTjsonDirPath | Out-Null
@@ -605,40 +599,34 @@ if (!(Test-Path -Path "$FOUNT_DIR/node_modules") -or ($args.Count -gt 0 -and $ar
 	Write-Host "======================================================" -ForegroundColor Green
 	Write-Warning "DO NOT install any untrusted fount parts on your system, they can do ANYTHING."
 	Write-Host "======================================================" -ForegroundColor Green
+	# 生成 桌面快捷方式 和 Start Menu 快捷方式
+	$shell = New-Object -ComObject WScript.Shell
 
-	# 生成桌面快捷方式和开始菜单快捷方式 (仅限 Windows)
-	if ($IsWindows) {
-		Write-Host "Creating desktop and Start Menu shortcuts..."
-		$shell = New-Object -ComObject WScript.Shell
-
-		$shortcutTargetPath = "powershell.exe"
-		$shortcutArguments = "-noprofile -nologo -ExecutionPolicy Bypass -File `"$FOUNT_DIR\path\fount.ps1`" open keepalive"
-
-		# 如果安装了 Windows Terminal，则使用 wt.exe 启动
-		if (Test-Path "$env:LOCALAPPDATA/Microsoft/WindowsApps/wt.exe") {
-			$shortcutTargetPath = "$env:LOCALAPPDATA/Microsoft/WindowsApps/wt.exe"
-			$shortcutArguments = "-p fount powershell.exe $shortcutArguments" # Prepend -p fount to existing arguments
-		}
-		$shortcutIconLocation = "$FOUNT_DIR\src\public\favicon.ico"
-
-		# 创建桌面快捷方式
-		$desktopPath = [Environment]::GetFolderPath("Desktop")
-		$desktopShortcut = $shell.CreateShortcut("$desktopPath\fount.lnk")
-		$desktopShortcut.TargetPath = $shortcutTargetPath
-		$desktopShortcut.Arguments = $shortcutArguments
-		$desktopShortcut.IconLocation = $shortcutIconLocation
-		$desktopShortcut.Save()
-		Write-Host "Desktop shortcut created at $desktopPath\fount.lnk"
-
-		# 创建开始菜单快捷方式
-		$startMenuPath = [Environment]::GetFolderPath("StartMenu")
-		$startMenuShortcut = $shell.CreateShortcut("$startMenuPath\fount.lnk")
-		$startMenuShortcut.TargetPath = $shortcutTargetPath
-		$startMenuShortcut.Arguments = $shortcutArguments
-		$startMenuShortcut.IconLocation = $shortcutIconLocation
-		$startMenuShortcut.Save()
-		Write-Host "Start Menu shortcut created at $startMenuPath\fount.lnk"
+	$shortcutTargetPath = "powershell.exe"
+	$shortcutArguments = "-noprofile -nologo -ExecutionPolicy Bypass -File `"$FOUNT_DIR\path\fount.ps1`" open keepalive"
+	if (Test-Path "$env:LOCALAPPDATA/Microsoft/WindowsApps/wt.exe") {
+		$shortcutTargetPath = "$env:LOCALAPPDATA/Microsoft/WindowsApps/wt.exe"
+		$shortcutArguments = "-p fount powershell.exe $shortcutArguments" # Prepend -p fount to existing arguments
 	}
+	$shortcutIconLocation = "$FOUNT_DIR\src\public\favicon.ico"
+
+	# 创建桌面快捷方式
+	$desktopPath = [Environment]::GetFolderPath("Desktop")
+	$desktopShortcut = $shell.CreateShortcut("$desktopPath\fount.lnk")
+	$desktopShortcut.TargetPath = $shortcutTargetPath
+	$desktopShortcut.Arguments = $shortcutArguments
+	$desktopShortcut.IconLocation = $shortcutIconLocation
+	$desktopShortcut.Save()
+	Write-Host "Desktop shortcut created at $desktopPath\fount.lnk"
+
+	# 创建开始菜单快捷方式
+	$startMenuPath = [Environment]::GetFolderPath("StartMenu")
+	$startMenuShortcut = $shell.CreateShortcut("$startMenuPath\fount.lnk")
+	$startMenuShortcut.TargetPath = $shortcutTargetPath
+	$startMenuShortcut.Arguments = $shortcutArguments
+	$startMenuShortcut.IconLocation = $shortcutIconLocation
+	$startMenuShortcut.Save()
+	Write-Host "Start Menu shortcut created at $startMenuPath\fount.lnk"
 }
 
 # 主要参数处理逻辑

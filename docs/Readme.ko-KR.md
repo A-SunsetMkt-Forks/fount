@@ -46,15 +46,25 @@
 
 ```bash
 # 필요한 경우 fount 디렉토리를 지정하기 위해 환경 변수 $FOUNT_DIR을 정의합니다.
+INSTALLED_PACKAGES=""
+install_package() { if [ -z "$INSTALLED_PACKAGES" ]; then INSTALLED_PACKAGES="$1"; else INSTALLED_PACKAGES="$INSTALLED_PACKAGES;$1"; fi; if command -v pkg > /dev/null 2>&1; then pkg install -y "$1"; elif command -v apt-get > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo apt-get update; sudo apt-get install -y "$1"; else apt-get update; apt-get install -y "$1"; fi; elif command -v brew > /dev/null 2>&1; then brew install "$1"; elif command -v pacman > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo pacman -Syy; sudo pacman -S --needed --noconfirm "$1"; else pacman -Syy; pacman -S --needed --noconfirm "$1"; fi; elif command -v dnf > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo dnf install -y "$1"; else dnf install -y "$1"; fi; elif command -v zypper > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo zypper install -y --no-confirm "$1"; else zypper install -y --no-confirm "$1"; fi; elif command -v apk > /dev/null 2>&1; then apk add --update "$1"; else echo "Can't install '$1'"; exit 1; fi; }
+if ! command -v curl > /dev/null 2>&1; then install_package curl; fi
+if ! command -v bash > /dev/null 2>&1; then install_package bash; fi
+export FOUNT_AUTO_INSTALLED_PACKAGES="$INSTALLED_PACKAGES"
 curl -fsSL https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash
-source "$HOME/.profile"
+. "$HOME/.profile"
 ```
 
 만약 웅대한 모험(드라이 런) 전에 잠시 멈춰서 생각을 정리하고 싶다면:
 
 ```bash
+INSTALLED_PACKAGES=""
+install_package() { if [ -z "$INSTALLED_PACKAGES" ]; then INSTALLED_PACKAGES="$1"; else INSTALLED_PACKAGES="$INSTALLED_PACKAGES;$1"; fi; if command -v pkg > /dev/null 2>&1; then pkg install -y "$1"; elif command -v apt-get > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo apt-get update; sudo apt-get install -y "$1"; else apt-get update; apt-get install -y "$1"; fi; elif command -v brew > /dev/null 2>&1; then brew install "$1"; elif command -v pacman > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo pacman -Syy; sudo pacman -S --needed --noconfirm "$1"; else pacman -Syy; pacman -S --needed --noconfirm "$1"; fi; elif command -v dnf > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo dnf install -y "$1"; else dnf install -y "$1"; fi; elif command -v zypper > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo zypper install -y --no-confirm "$1"; else zypper install -y --no-confirm "$1"; fi; elif command -v apk > /dev/null 2>&1; then apk add --update "$1"; else echo "Can't install '$1'"; exit 1; fi; }
+if ! command -v curl > /dev/null 2>&1; then install_package curl; fi
+if ! command -v bash > /dev/null 2>&1; then install_package bash; fi
+export FOUNT_AUTO_INSTALLED_PACKAGES="$INSTALLED_PACKAGES"
 curl -fsSL https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash -s init
-source "$HOME/.profile"
+. "$HOME/.profile"
 ```
 
 ### Windows: 경로 선택 – *단순함 그 자체*
