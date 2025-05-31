@@ -4,6 +4,12 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 FOUNT_DIR=$(dirname "$SCRIPT_DIR")
 
+# 若是 Windows 环境，则使用 fount.ps1
+if [[ "$OSTYPE" == "msys" ]]; then
+	powerShell.exe -noprofile -executionpolicy bypass -file "$FOUNT_DIR\path\fount.ps1" $@
+	exit $?
+fi
+
 # 转义后的Fount路径用于sed
 ESCAPED_FOUNT_DIR=$(echo "$FOUNT_DIR" | sed 's/\//\\\//g')
 

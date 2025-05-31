@@ -9,7 +9,7 @@ if [[ "$OSTYPE" == "msys" ]]; then
 	exit $?
 fi
 
-INSTALLED_PACKAGES=""
+INSTALLED_PACKAGES="${FOUNT_AUTO_INSTALLED_PACKAGES:-}"
 
 install_package() {
 	# 将当前安装的包添加到列表中

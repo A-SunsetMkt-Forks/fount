@@ -46,17 +46,25 @@
 
 ```bash
 # यदि आवश्यक हो, तो फाउंट निर्देशिका निर्दिष्ट करने के लिए पर्यावरण चर $FOUNT_DIR को परिभाषित करें
-if ! command -v curl &> /dev/null; then if command -v pkg &> /dev/null; then pkg install -y curl; elif command -v apt-get &> /dev/null; then if command -v sudo &> /dev/null; then sudo apt-get update; sudo apt-get install -y curl; else apt-get update; apt-get install -y curl; fi; elif command -v brew &> /dev/null; then brew install curl; elif command -v pacman &> /dev/null; then if command -v sudo &> /dev/null; then sudo pacman -Syy; sudo pacman -S --needed --noconfirm curl; else pacman -Syy; pacman -S --needed --noconfirm curl; fi; elif command -v dnf &> /dev/null; then if command -v sudo &> /dev/null; then sudo dnf install -y curl; else dnf install -y curl; fi; elif command -v zypper &> /dev/null; then if command -v sudo &> /dev/null; then sudo zypper install -y --no-confirm curl; else zypper install -y --no-confirm curl; fi; elif command -v apk &> /dev/null; then apk add --update curl; else echo "curl is not installed, and no known package manager is available."; exit 1; fi; fi
+INSTALLED_PACKAGES=""
+install_package() { if [ -z "$INSTALLED_PACKAGES" ]; then INSTALLED_PACKAGES="$1"; else INSTALLED_PACKAGES="$INSTALLED_PACKAGES;$1"; fi; if command -v pkg > /dev/null 2>&1; then pkg install -y "$1"; elif command -v apt-get > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo apt-get update; sudo apt-get install -y "$1"; else apt-get update; apt-get install -y "$1"; fi; elif command -v brew > /dev/null 2>&1; then brew install "$1"; elif command -v pacman > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo pacman -Syy; sudo pacman -S --needed --noconfirm "$1"; else pacman -Syy; pacman -S --needed --noconfirm "$1"; fi; elif command -v dnf > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo dnf install -y "$1"; else dnf install -y "$1"; fi; elif command -v zypper > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo zypper install -y --no-confirm "$1"; else zypper install -y --no-confirm "$1"; fi; elif command -v apk > /dev/null 2>&1; then apk add --update "$1"; else echo "Can't install '$1'"; exit 1; fi; }
+if ! command -v curl > /dev/null 2>&1; then install_package curl; fi
+if ! command -v bash > /dev/null 2>&1; then install_package bash; fi
+export FOUNT_AUTO_INSTALLED_PACKAGES="$INSTALLED_PACKAGES"
 curl -fsSL https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash
-source "$HOME/.profile"
+. "$HOME/.profile"
 ```
 
 यदि आप महान साहसिक कार्य (एक ड्राई रन) से पहले अपने विचारों को इकट्ठा करने के लिए रुकना चाहते हैं:
 
 ```bash
-if ! command -v curl &> /dev/null; then if command -v pkg &> /dev/null; then pkg install -y curl; elif command -v apt-get &> /dev/null; then if command -v sudo &> /dev/null; then sudo apt-get update; sudo apt-get install -y curl; else apt-get update; apt-get install -y curl; fi; elif command -v brew &> /dev/null; then brew install curl; elif command -v pacman &> /dev/null; then if command -v sudo &> /dev/null; then sudo pacman -Syy; sudo pacman -S --needed --noconfirm curl; else pacman -Syy; pacman -S --needed --noconfirm curl; fi; elif command -v dnf &> /dev/null; then if command -v sudo &> /dev/null; then sudo dnf install -y curl; else dnf install -y curl; fi; elif command -v zypper &> /dev/null; then if command -v sudo &> /dev/null; then sudo zypper install -y --no-confirm curl; else zypper install -y --no-confirm curl; fi; elif command -v apk &> /dev/null; then apk add --update curl; else echo "curl is not installed, and no known package manager is available."; exit 1; fi; fi
+INSTALLED_PACKAGES=""
+install_package() { if [ -z "$INSTALLED_PACKAGES" ]; then INSTALLED_PACKAGES="$1"; else INSTALLED_PACKAGES="$INSTALLED_PACKAGES;$1"; fi; if command -v pkg > /dev/null 2>&1; then pkg install -y "$1"; elif command -v apt-get > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo apt-get update; sudo apt-get install -y "$1"; else apt-get update; apt-get install -y "$1"; fi; elif command -v brew > /dev/null 2>&1; then brew install "$1"; elif command -v pacman > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo pacman -Syy; sudo pacman -S --needed --noconfirm "$1"; else pacman -Syy; pacman -S --needed --noconfirm "$1"; fi; elif command -v dnf > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo dnf install -y "$1"; else dnf install -y "$1"; fi; elif command -v zypper > /dev/null 2>&1; then if command -v sudo > /dev/null 2>&1; then sudo zypper install -y --no-confirm "$1"; else zypper install -y --no-confirm "$1"; fi; elif command -v apk > /dev/null 2>&1; then apk add --update "$1"; else echo "Can't install '$1'"; exit 1; fi; }
+if ! command -v curl > /dev/null 2>&1; then install_package curl; fi
+if ! command -v bash > /dev/null 2>&1; then install_package bash; fi
+export FOUNT_AUTO_INSTALLED_PACKAGES="$INSTALLED_PACKAGES"
 curl -fsSL https://raw.githubusercontent.com/steve02081504/fount/refs/heads/master/src/runner/main.sh | bash -s init
-source "$HOME/.profile"
+. "$HOME/.profile"
 ```
 
 ### विंडोज: रास्तों का चुनाव – *सादगी ही सब कुछ है*
