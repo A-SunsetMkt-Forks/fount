@@ -104,8 +104,6 @@ install_package() {
 
 	# 检查是否已经通过 command -v 安装成功
 	if command -v "$package_name" &> /dev/null; then
-		echo "$package_name is already installed and found in PATH."
-		add_package_to_tracker "$package_name" "INSTALLED_SYSTEM_PACKAGES_ARRAY"
 		return 0
 	fi
 
@@ -113,7 +111,11 @@ install_package() {
 
 	if command -v pkg &> /dev/null; then
 		pkg install -y "$package_name" && install_successful=1
-	elif command -v apt-get &> /dev/null; then
+	fi
+	if [[ install_successful -eq 0 ]] && command -v snap &> /dev/null; then
+		snap install "$package_name" && install_successful=1
+	fi
+	if [[ install_successful -eq 0 ]] && command -v apt-get &> /dev/null; then
 		if command -v sudo &> /dev/null; then
 			sudo apt-get update -y
 			sudo apt-get install -y "$package_name" && install_successful=1
@@ -121,11 +123,13 @@ install_package() {
 			apt-get update -y
 			apt-get install -y "$package_name" && install_successful=1
 		fi
-	elif command -v brew &> /dev/null; then
+	fi
+	if [[ install_successful -eq 0 ]] && command -v brew &> /dev/null; then
 		if ! brew list --formula "$package_name" &> /dev/null; then
 			brew install "$package_name" && install_successful=1
 		fi
-	elif command -v pacman &> /dev/null; then
+	fi
+	if [[ install_successful -eq 0 ]] && command -v pacman &> /dev/null; then
 		if command -v sudo &> /dev/null; then
 			sudo pacman -Syy
 			sudo pacman -S --needed --noconfirm "$package_name" && install_successful=1
@@ -133,23 +137,30 @@ install_package() {
 			pacman -Syy
 			pacman -S --needed --noconfirm "$package_name" && install_successful=1
 		fi
-	elif command -v dnf &> /dev/null; then
+	fi
+	if [[ install_successful -eq 0 ]] && command -v dnf &> /dev/null; then
 		if command -v sudo &> /dev/null; then
 			sudo dnf install -y "$package_name" && install_successful=1
 		else
 			dnf install -y "$package_name" && install_successful=1
 		fi
-	elif command -v zypper &> /dev/null; then
+	fi
+	if [[ install_successful -eq 0 ]] && command -v yum &> /dev/null; then
+		if command -v sudo &> /dev/null; then
+			sudo yum install -y "$package_name" && install_successful=1
+		else
+			yum install -y "$package_name" && install_successful=1
+		fi
+	fi
+	if [[ install_successful -eq 0 ]] && command -v zypper &> /dev/null; then
 		if command -v sudo &> /dev/null; then
 			sudo zypper install -y --no-confirm "$package_name" && install_successful=1
 		else
 			zypper install -y --no-confirm "$package_name" && install_successful=1
 		fi
-	elif command -v apk &> /dev/null; then
+	fi
+	if [[ install_successful -eq 0 ]] && command -v apk &> /dev/null; then
 		apk add --update "$package_name" && install_successful=1
-	else
-		echo "Error: Cannot install $package_name. Please install it manually." >&2
-		return 1
 	fi
 
 	if [[ $install_successful -eq 1 ]]; then
@@ -165,32 +176,59 @@ install_package() {
 # $1: 包名
 uninstall_package() {
 	local package_name="$1"
-	# 尝试从系统包管理器中卸载
-	# 注意：卸载顺序从“最新”或“最不通用”的开始，以避免依赖问题
-	if command -v apk &> /dev/null; then
-		apk del "$package_name" && { echo "$package_name uninstalled via apk."; return 0; }
+	echo "Attempting to uninstall $package_name..."
+
+	if command -v pkg &> /dev/null; then
+		pkg uninstall -y "$package_name" && { echo "$package_name uninstalled via pkg."; return 0; }
 	fi
-	if command -v zypper &> /dev/null; then
-		if command -v sudo &> /dev/null; then sudo zypper remove -y --no-confirm "$package_name"; else zypper remove -y --no-confirm "$package_name"; fi && { echo "$package_name uninstalled via zypper."; return 0; }
+	if command -v snap &> /dev/null; then
+		snap remove "$package_name" && { echo "$package_name uninstalled via snap."; return 0; }
 	fi
-	if command -v dnf &> /dev/null; then
-		if command -v sudo &> /dev/null; then sudo dnf remove -y "$package_name"; else dnf remove -y "$package_name"; fi && { echo "$package_name uninstalled via dnf."; return 0; }
-	fi
-	if command -v pacman &> /dev/null; then
-		# 使用 -Rns 移除包及其不再需要的依赖
-		if command -v sudo &> /dev/null; then sudo pacman -Rns --noconfirm "$package_name"; else pacman -Rns --noconfirm "$package_name"; fi && { echo "$package_name uninstalled via pacman."; return 0; }
+	if command -v apt-get &> /dev/null; then
+		# 使用 purge 以便彻底删除配置文件
+		if command -v sudo &> /dev/null; then
+			sudo apt-get purge -y "$package_name"
+		else
+			apt-get purge -y "$package_name"
+		fi && { echo "$package_name uninstalled via apt-get."; return 0; }
 	fi
 	if command -v brew &> /dev/null; then
 		brew uninstall "$package_name" && { echo "$package_name uninstalled via brew."; return 0; }
 	fi
-	if command -v apt-get &> /dev/null; then
-		# 使用 purge 以便彻底删除配置文件
-		if command -v sudo &> /dev/null; then sudo apt-get purge -y "$package_name"; else apt-get purge -y "$package_name"; fi && { echo "$package_name uninstalled via apt-get."; return 0; }
+	if command -v pacman &> /dev/null; then
+		# 使用 -Rns 移除包及其不再需要的依赖和配置文件
+		if command -v sudo &> /dev/null; then
+			sudo pacman -Rns --noconfirm "$package_name"
+		else
+			pacman -Rns --noconfirm "$package_name"
+		fi && { echo "$package_name uninstalled via pacman."; return 0; }
 	fi
-	if command -v pkg &> /dev/null; then
-		pkg uninstall -y "$package_name" && { echo "$package_name uninstalled via pkg."; return 0; }
+	if command -v dnf &> /dev/null; then
+		if command -v sudo &> /dev/null; then
+			sudo dnf remove -y "$package_name"
+		else
+			dnf remove -y "$package_name"
+		fi && { echo "$package_name uninstalled via dnf."; return 0; }
 	fi
-	echo "Failed to uninstall $package_name via any package manager." >&2
+	if command -v yum &> /dev/null; then
+		if command -v sudo &> /dev/null; then
+			sudo yum remove -y "$package_name"
+		else
+			yum remove -y "$package_name"
+		fi && { echo "$package_name uninstalled via yum."; return 0; }
+	fi
+	if command -v zypper &> /dev/null; then
+		if command -v sudo &> /dev/null; then
+			sudo zypper remove -y --no-confirm "$package_name"
+		else
+			zypper remove -y --no-confirm "$package_name"
+		fi && { echo "$package_name uninstalled via zypper."; return 0; }
+	fi
+	if command -v apk &> /dev/null; then
+		apk del "$package_name" && { echo "$package_name uninstalled via apk."; return 0; }
+	fi
+
+	echo "Failed to uninstall $package_name via any recognized package manager." >&2
 	return 1
 }
 
