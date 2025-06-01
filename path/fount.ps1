@@ -356,9 +356,10 @@ function fount_upgrade {
 		Remove-Item -Path "$FOUNT_DIR/.git-clone" -Recurse -Force -ErrorAction SilentlyContinue
 		New-Item -ItemType Directory -Path "$FOUNT_DIR/.git-clone" | Out-Null
 		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1 --single-branch
-		if ($LASTEXITCODE -ne 0) {
-			Write-Error "Error: Failed to clone fount repository. Check connection or configuration."
-			exit 1
+		if ($LastExitCode) {
+			Remove-Item -Path "$FOUNT_DIR/.git-clone" -Recurse -Force
+			Write-Host "Failed to clone fount repository, skipping update"
+			return
 		}
 		Move-Item -Path "$FOUNT_DIR/.git-clone/.git" -Destination "$FOUNT_DIR/.git"
 		Remove-Item -Path "$FOUNT_DIR/.git-clone" -Recurse -Force
