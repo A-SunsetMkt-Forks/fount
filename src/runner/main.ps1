@@ -30,7 +30,7 @@ if (!$IsWindows) {
 		}
 		if (-not $install_successful -and (Get-Command -Name "brew" -ErrorAction Ignore)) {
 			brew list --formula "$package_name" | Out-Null
-			if ($LastExitCode -ne 0) {
+			if ($LastExitCode) {
 				brew install "$package_name"
 				if (!$LastExitCode) { $install_successful = $true }
 			}
