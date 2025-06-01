@@ -1121,6 +1121,12 @@ run() {
 	if [[ $IN_TERMUX -eq 1 ]]; then
 		LANG_BACKUP="$LANG"
 		export LANG="$(getprop persist.sys.locale)"
+		# 水秋脚本对termux的劫持移除
+		local SQsacPath="/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/ubuntu/root/.bashrc"
+		if [[ -f "$SQsacPath" ]] && grep -q "bash /root/sac.sh" "$SQsacPath"; then
+			sed -i '/bash \/root\/sac.sh/d' "$SQsacPath"
+			sed -i '/proot-distro login ubuntu/d' "/data/data/com.termux/files/home/.bashrc"
+		fi
 	fi
 
 	# 运行 fount (debug 或普通模式)
