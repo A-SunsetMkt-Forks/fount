@@ -19,10 +19,17 @@ export function removeTimer(username, parttype, partname, uid) {
 	const timers = getUserByUsername(username).timers ?? {}
 	if (timers[parttype]?.[partname]?.[uid]) {
 		delete timers[parttype][partname][uid]
-		if (Object.keys(timers[parttype][partname]).length === 0)
+		if (Object.keys(timers[parttype][partname]).length === 0) {
 			delete timers[parttype][partname]
+			if (Object.keys(timers[parttype]).length === 0)
+				delete timers[parttype]
+		}
+		save_config()
 	}
-	save_config()
+	else {
+		console.warn('Timer not found:', { username, parttype, partname, uid })
+		throw new Error('Timer not found')
+	}
 }
 
 export function getTimers(username, parttype, partname) {
