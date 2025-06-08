@@ -36,6 +36,7 @@ export async function buildPromptStruct(
 		world_prompt: getSinglePartPrompt(),
 		plugin_prompts: {},
 		chat_log,
+		reply_request: args,
 	}
 
 	while (detail_level--) {

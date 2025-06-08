@@ -2,6 +2,7 @@ import { getUserByUsername } from './auth.mjs'
 import { getAllUserNames } from './auth.mjs'
 import { save_config } from './server.mjs'
 import { loadPart } from './managers/index.mjs'
+import { getAsyncLocalStorages, runAsyncLocalStorages } from './async_storage.mjs'
 
 export function setTimer(username, parttype, partname, uid, { trigger, callbackdata, repeat }) {
 	const timers = getUserByUsername(username).timers ??= {}
@@ -11,6 +12,7 @@ export function setTimer(username, parttype, partname, uid, { trigger, callbackd
 		trigger,
 		callbackdata,
 		repeat: repeat ?? false,
+		asyncstorages: getAsyncLocalStorages()
 	}
 	save_config()
 }
@@ -49,7 +51,9 @@ async function TimerHeartbeat() {
 						if (!timer.repeat) removeTimer(user, parttype, partname, uid) // 先移除避免重复触发
 						try {
 							const part = await loadPart(user, parttype, partname)
-							part.interfaces.timers.TimerCallback(user, uid, timer.callbackdata)
+							await runAsyncLocalStorages(timer.asyncstorages, () =>
+								part.interfaces.timers.TimerCallback(user, uid, timer.callbackdata)
+							)
 						} catch (err) {
 							console.error(err)
 						}
