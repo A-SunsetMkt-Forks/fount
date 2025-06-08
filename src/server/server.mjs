@@ -16,6 +16,8 @@ import { geti18n } from '../scripts/i18n.mjs'
 import { sentrytunnel } from '../scripts/sentrytunnel.mjs'
 import { partsList } from './managers/index.mjs'
 import { Router as WsAbleRouter } from 'npm:websocket-express'
+import { ReStartJobs } from './jobs.mjs'
+import { startTimerHeartbeat } from './timers.mjs'
 
 export { __dirname }
 const app = express()
@@ -176,6 +178,8 @@ export async function init() {
 	console.log(await geti18n('fountConsole.server.usesdTime', {
 		time: (endtime - startTime) / 1000
 	}))
+	ReStartJobs()
+	startTimerHeartbeat()
 	StartRPC()
 	return true
 }
