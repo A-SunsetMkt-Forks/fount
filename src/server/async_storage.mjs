@@ -14,7 +14,7 @@ export function getAsyncLocalStorages() {
 }
 export function enterAsyncLocalStorages(values) {
 	for (const [uid, store] of Object.entries(values))
-		AsyncLocalStorages[uid]?.enter?.(store)
+		AsyncLocalStorages[uid]?.enterWith?.(store)
 }
 export function runAsyncLocalStorages(values, callback) {
 	return new AsyncLocalStorage().run(values, async () => {

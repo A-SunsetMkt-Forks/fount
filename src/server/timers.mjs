@@ -41,6 +41,7 @@ export function getTimers(username, parttype, partname) {
 
 async function TimerHeartbeat() {
 	const users = getAllUserNames()
+	let need_save = false
 	for (const user of users) {
 		const timers = getUserByUsername(user).timers ?? {}
 		for (const parttype in timers)
@@ -54,12 +55,14 @@ async function TimerHeartbeat() {
 							await runAsyncLocalStorages(timer.asyncstorages, () =>
 								part.interfaces.timers.TimerCallback(user, uid, timer.callbackdata)
 							)
+							need_save = true
 						} catch (err) {
 							console.error(err)
 						}
 					}
 				}
 	}
+	if (need_save) save_config()
 }
 
 export function startTimerHeartbeat() {
