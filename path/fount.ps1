@@ -271,17 +271,17 @@ if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 	if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 		Write-Host "Deno installation failed, attempting auto installing to fount's path folder..."
 		$url = "https://github.com/denoland/deno/releases/latest/download/deno-" + (if ($IsWindows) {
-			"x86_64-pc-windows-msvc.zip"
-		} elseif ($IsMacOS) {
-			if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-				"aarch64-apple-darwin.zip"
-			}
-			else {
-				"x86_64-apple-darwin.zip"
-			}
-		} else {
-			"x86_64-unknown-linux-gnu.zip"
-		})
+				"x86_64-pc-windows-msvc.zip"
+			} elseif ($IsMacOS) {
+				if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+					"aarch64-apple-darwin.zip"
+				}
+				else {
+					"x86_64-apple-darwin.zip"
+				}
+			} else {
+				"x86_64-unknown-linux-gnu.zip"
+			})
 		Invoke-WebRequest -Uri $url -OutFile "$env:TEMP/deno.zip"
 		Expand-Archive -Path "$env:TEMP/deno.zip" -DestinationPath "$FOUNT_DIR/path"
 		Remove-Item -Path "$env:TEMP/deno.zip" -Force

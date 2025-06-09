@@ -40,6 +40,5 @@ export type prompt_struct_t = {
 	world_prompt: single_part_prompt_t
 	plugin_prompts: Record<string, single_part_prompt_t>
 	chat_log: chatLogEntry_t[];
-	reply_request?: chatReplyRequest_t;
 	extension?: any;
 }
