@@ -1156,7 +1156,7 @@ if [[ $# -gt 0 ]]; then
 				echo "Deno installation directory $HOME/.deno removed."
 			fi
 			for profile_file in "${profile_files[@]}"; do
-				if [ -f "$profile_file" ]; {
+				if [ -f "$profile_file" ]; then
 					# macOS sed needs empty string, Linux sed doesn't
 					if [ "$OS_TYPE" = "Darwin" ]; then
 						sed -i '' '/\.deno/d' "$profile_file"
@@ -1164,7 +1164,7 @@ if [[ $# -gt 0 ]]; then
 						sed -i '/\.deno/d' "$profile_file"
 					fi
 					echo "Cleaned PATH entries in $profile_file."
-				}
+				fi
 			done
 			rm -f "$AUTO_INSTALLED_DENO_FLAG"
 		fi
