@@ -464,7 +464,7 @@ function install_bun() {
 		catch {
 			Write-Warning "Bun installation via official script failed: $($_.Exception.Message). Attempting manual installation to fount's path folder..."
 			# 官方脚本安装失败，尝试手动下载并解压到 fount 的 path 目录
-			$url = "https://github.com/oven-sh/bun/releases/latest/download/bun-" + (if ($IsWindows) {
+			$url = "https://github.com/oven-sh/bun/releases/latest/download/bun-" + $(if ($IsWindows) {
 				"windows-x64-baseline.zip"
 			} elseif ($IsMacOS) {
 				if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
@@ -581,22 +581,10 @@ function run {
 	}
 }
 
-# 安装 fount 依赖 (node_modules)
-# 如果 node_modules 目录不存在，或者传入 'init' 参数，则安装依赖
-if (!(Test-Path -Path "$FOUNT_DIR/node_modules") -or ($args.Count -gt 0 -and $args[0] -eq 'init')) {
+# 安装 fount 依赖
+if (!(Test-Path -Path "$FOUNT_DIR/data") -or ($args.Count -gt 0 -and $args[0] -eq 'init')) {
 	Write-Host "Installing Fount dependencies..."
 
-	# 如果 node_modules 存在，尝试先关闭 fount 进程
-	if (Test-Path -Path "$FOUNT_DIR/node_modules") {
-		run shutdown
-	}
-
-	# 使用 Bun 安装 node_modules 依赖
-	# Bun 的 install 命令会根据 package.json 自动处理
-	bun install
-
-	# 运行一次 shutdown，以确保所有服务都已停止，并处理可能的首次运行错误
-	# 模仿 Bash 脚本的行为，即使失败也继续
 	run shutdown
 
 	Write-Host "======================================================" -ForegroundColor Green
