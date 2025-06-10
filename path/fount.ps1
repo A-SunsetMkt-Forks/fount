@@ -4,7 +4,11 @@ $FOUNT_DIR = Split-Path -Parent $PSScriptRoot
 # 记录脚本开始时的错误数量，用于最终判断脚本是否成功执行
 $ErrorCount = $Error.Count
 
-# Docker 检测 (目前在 PowerShell 脚本中未实现 Docker 环境的自动检测，保留为 false)
+if ($PSEdition -eq "Desktop") {
+	try { $IsWindows = $true } catch {}
+}
+
+# Docker 检测
 $IN_DOCKER = $false
 
 # 定义安装器数据目录和自动安装标记文件
@@ -559,6 +563,9 @@ function isRoot {
 
 # 函数: 运行 fount 应用程序
 function run {
+	if ($IsWindows) {
+		Get-Process tray_windows_release -ErrorAction Ignore | Where-Object { $_.CPU -gt 0.5 } | Stop-Process
+	}
 	if (isRoot) {
 		Write-Warning "Not Recommended: Running fount as root grants full system access for all fount parts."
 		Write-Warning "Unless you know what you are doing, it is recommended to run fount as a common user."
@@ -571,11 +578,6 @@ function run {
 	}
 	else {
 		bun run --config="$FOUNT_DIR/bunfig.toml" --install=force --prefer-latest "$FOUNT_DIR/src/server/index.mjs" @args
-	}
-
-	# Windows 特有：尝试停止 tray_windows_release 进程，如果它占用 CPU 过高
-	if ($IsWindows) {
-		Get-Process tray_windows_release -ErrorAction SilentlyContinue | Where-Object { $_.CPU -gt 0.5 } | Stop-Process -Force -ErrorAction SilentlyContinue
 	}
 }
 

@@ -12,9 +12,7 @@ import process from 'node:process'
 import { console } from '../scripts/console.mjs'
 import { init } from './server.mjs'
 import { IPCManager } from './ipc_server.mjs'
-import { ReStartJobs } from './jobs.mjs'
 import { geti18n } from '../scripts/i18n.mjs'
-import { startTimerHeartbeat } from './timers.mjs'
 
 console.log(await geti18n('fountConsole.server.standingBy'))
 
@@ -26,13 +24,14 @@ if (args.length) {
 	const command = args[0]
 	args = args.slice(1)
 
-	if (command === 'runshell') {
+	if (command === 'run') {
 		const username = args[0]
-		const shellname = args[1]
-		args = args.slice(2)
+		const parttype = args[1]
+		const partname = args[2]
+		args = args.slice(3)
 
 		try {
-			await IPCManager.sendCommand('runshell', { username, shellname, args })
+			await IPCManager.sendCommand('runpart', { username, parttype, partname, args })
 		} catch (err) {
 			console.error(await geti18n('fountConsole.ipc.sendCommandFailed', { error: err }))
 			process.exit(1)
@@ -52,6 +51,3 @@ if (args.length) {
 }
 
 if (!isFirstInstance) process.exit(0)
-
-ReStartJobs()
-startTimerHeartbeat()
