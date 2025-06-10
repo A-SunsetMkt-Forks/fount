@@ -260,52 +260,6 @@ if (!$IsWindows) {
 	exit $LastExitCode
 }
 
-# fount 协议注册 (新增)
-if (-not $IN_DOCKER) {
-	$protocolName = "fount"
-	$protocolDescription = "URL:fount Protocol"
-	# 使用 fount.bat 作为协议处理程序，因为它是Windows上的主入口点
-	$command = "`"$FOUNT_DIR\path\fount.bat`" protocolhandle `"%1`""
-
-	try {
-		# 创建目录
-		New-Item -Path "HKCU:\Software\Classes\$protocolName" -Force | Out-Null
-		# 设置协议根键
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "(Default)" -Value $protocolDescription -ErrorAction Stop
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "URL Protocol" -Value "" -ErrorAction Stop
-		# 创建 shell\open\command 子键
-		New-Item -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Force | Out-Null
-		# 设置协议处理命令
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Name "(Default)" -Value $command -ErrorAction Stop
-	}
-	catch {
-		Write-Warning "Failed to register fount:// protocol handler: $($_.Exception.Message)"
-	}
-}
-
-# fount Terminal注册
-$WTjsonDirPath = "$env:LOCALAPPDATA/Microsoft/Windows Terminal/Fragments/fount"
-if (!(Test-Path $WTjsonDirPath)) {
-	New-Item -ItemType Directory -Force -Path $WTjsonDirPath | Out-Null
-}
-$WTjsonPath = "$WTjsonDirPath/fount.json"
-$jsonContent = [ordered]@{
-	'$help'   = "https://aka.ms/terminal-documentation"
-	'$schema' = "https://aka.ms/terminal-profiles-schema"
-	profiles  = @(
-		[ordered]@{
-			name              = "fount"
-			commandline       = "fount.bat keepalive" # 使用 fount.bat 作为入口
-			startingDirectory = $FOUNT_DIR
-			icon              = Join-Path $FOUNT_DIR "src/public/favicon.ico"
-		}
-	)
-} | ConvertTo-Json -Depth 100 -Compress
-# 如果内容有变化，则写入文件
-if ($jsonContent -ne (Get-Content $WTjsonPath -Raw -ErrorAction Ignore)) {
-	Set-Content -Path $WTjsonPath -Value $jsonContent
-}
-
 # Git 安装和更新
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 	Write-Host "Git is not installed, attempting to install..."
@@ -618,6 +572,48 @@ if (!(Test-Path -Path "$FOUNT_DIR/data") -or ($args.Count -gt 0 -and $args[0] -e
 	$startMenuShortcut.IconLocation = $shortcutIconLocation
 	$startMenuShortcut.Save()
 	Write-Host "Start Menu shortcut created at $startMenuPath\fount.lnk"
+
+	# fount 协议注册
+	$protocolName = "fount"
+	$protocolDescription = "URL:fount Protocol"
+	# 使用 fount.bat 作为协议处理程序，因为它是Windows上的主入口点
+	$command = "`"$FOUNT_DIR\path\fount.bat`" protocolhandle `"%1`""
+	try {
+		# 创建目录
+		New-Item -Path "HKCU:\Software\Classes\$protocolName" -Force | Out-Null
+		# 设置协议根键
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "(Default)" -Value $protocolDescription -ErrorAction Stop
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "URL Protocol" -Value "" -ErrorAction Stop
+		# 创建 shell\open\command 子键
+		New-Item -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Force | Out-Null
+		# 设置协议处理命令
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Name "(Default)" -Value $command -ErrorAction Stop
+	}
+	catch {
+		Write-Warning "Failed to register fount:// protocol handler: $($_.Exception.Message)"
+	}
+
+	# fount Terminal注册
+	$WTjsonDirPath = "$env:LOCALAPPDATA/Microsoft/Windows Terminal/Fragments/fount"
+	if (!(Test-Path $WTjsonDirPath)) {
+		New-Item -ItemType Directory -Force -Path $WTjsonDirPath | Out-Null
+	}
+	$WTjsonPath = "$WTjsonDirPath/fount.json"
+	$jsonContent = [ordered]@{
+		'$help'   = "https://aka.ms/terminal-documentation"
+		'$schema' = "https://aka.ms/terminal-profiles-schema"
+		profiles  = @(
+			[ordered]@{
+				name              = "fount"
+				commandline       = "fount.bat keepalive"
+				startingDirectory = $FOUNT_DIR
+				icon              = Join-Path $FOUNT_DIR src/public/favicon.ico
+			}
+		)
+	} | ConvertTo-Json -Depth 100 -Compress
+	if ($jsonContent -ne (Get-Content $WTjsonPath -ErrorAction Ignore)) {
+		Set-Content -Path $WTjsonPath -Value $jsonContent
+	}
 }
 
 # 主要参数处理逻辑
