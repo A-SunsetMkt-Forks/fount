@@ -735,7 +735,7 @@ EOF_OPEN_JOB
 
 	# 将剩余参数传递给 fount 运行 (例如 'keepalive')
 	"$FOUNT_DIR/path/fount.sh" "${@:2}" # 从第二个参数开始传递给fount
-	exit $? # 确保在后台进程启动后，主脚本可以退出
+	exit $?                             # 确保在后台进程启动后，主脚本可以退出
 # 处理 'background' 参数
 elif [[ $# -gt 0 && $1 = 'background' ]]; then
 	if command -v fount &>/dev/null; then
@@ -981,11 +981,16 @@ function install_bun() {
 
 				# Path persistence for Termux
 				local profile_file_bun="$HOME/.profile"
-				if [[ "$SHELL" == *"/zsh" ]]; then profile_file_bun="$HOME/.zshrc";
-				elif [[ "$SHELL" == *"/bash" ]]; then profile_file_bun="$HOME/.bashrc";
+				if [[ "$SHELL" == *"/zsh" ]]; then
+					profile_file_bun="$HOME/.zshrc"
+				elif [[ "$SHELL" == *"/bash" ]]; then
+					profile_file_bun="$HOME/.bashrc"
 				fi
-				if [[ ! -f "$profile_file_bun" ]] && [[ -f "$HOME/.profile" ]]; then profile_file_bun="$HOME/.profile";
-				elif [[ ! -f "$profile_file_bun" ]] && [[ ! -f "$HOME/.profile" ]]; then touch "$HOME/.profile"; profile_file_bun="$HOME/.profile";
+				if [[ ! -f "$profile_file_bun" ]] && [[ -f "$HOME/.profile" ]]; then
+					profile_file_bun="$HOME/.profile"
+				elif [[ ! -f "$profile_file_bun" ]] && [[ ! -f "$HOME/.profile" ]]; then
+					touch "$HOME/.profile"
+					profile_file_bun="$HOME/.profile"
 				fi
 
 				if [ "$(tail -c 1 "$profile_file_bun")" != $'\n' ]; then echo >>"$profile_file_bun"; fi
@@ -1001,8 +1006,8 @@ function install_bun() {
 						exit 1 # Exit on critical failure for Termux
 					fi
 				fi
-				patch_bun # Apply patch
-				mkdir -p "$INSTALLER_DATA_DIR" # Ensure directory exists for flag
+				patch_bun                        # Apply patch
+				mkdir -p "$INSTALLER_DATA_DIR"   # Ensure directory exists for flag
 				touch "$AUTO_INSTALLED_BUN_FLAG" # Mark as auto-installed
 			fi
 
@@ -1079,7 +1084,7 @@ function install_bun() {
 
 			# If Bun was successfully installed by any method in non-Termux, mark it
 			if [[ $bun_successfully_installed -eq 1 ]]; then
-				mkdir -p "$INSTALLER_DATA_DIR" # Ensure directory exists for flag
+				mkdir -p "$INSTALLER_DATA_DIR"   # Ensure directory exists for flag
 				touch "$AUTO_INSTALLED_BUN_FLAG" # Mark as auto-installed
 				# No explicit PATH export/profile modification needed here for non-Termux.
 				# Official bun install adds to ~/.bun/bin and updates profile.
