@@ -967,7 +967,7 @@ function install_bun() {
 			fi
 
 			# Attempt official Bun installation for Termux
-			if curl -fsSL https://bun.sh/install | sh -s -- -y; then
+			if curl -fsSL https://bun.sh/install | bash -s -- -y; then
 				echo "Bun installed via official script for Termux."
 				bun_successfully_installed=1
 			else
@@ -1014,7 +1014,7 @@ function install_bun() {
 		else
 			# Non-Termux environment
 			echo "Bun not found, attempting to install via official script..."
-			if curl -fsSL https://bun.sh/install | sh -s -- -y; then
+			if curl -fsSL https://bun.sh/install | bash -s -- -y; then
 				echo "Bun installed via official script."
 				bun_successfully_installed=1
 			else
@@ -1068,7 +1068,7 @@ function install_bun() {
 				echo "Downloading Bun from $bun_dl_url..."
 				if curl -fL -o "$TEMP_DIR/bun.zip" "$bun_dl_url"; then
 					echo "Extracting Bun to $FOUNT_DIR/path..."
-					if unzip -o "$TEMP_DIR/bun.zip" -d "$FOUNT_DIR/path"; then
+					if unzip -oj "$TEMP_DIR/bun.zip" "*/bun" -d "$FOUNT_DIR/path"; then
 						rm "$TEMP_DIR/bun.zip"         # Clean up temp file
 						chmod +x "$FOUNT_DIR/path/bun" # Ensure executable permissions
 						echo "Bun manually installed to $FOUNT_DIR/path."
