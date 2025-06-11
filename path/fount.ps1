@@ -122,51 +122,6 @@ if (!$IsWindows) {
 	exit $LastExitCode
 }
 
-# fount 协议注册 (新增)
-if (-not $IN_DOCKER) {
-	$protocolName = "fount"
-	$protocolDescription = "URL:fount Protocol"
-	# 使用 fount.bat 作为协议处理程序，因为它是Windows上的主入口点
-	$command = "`"$FOUNT_DIR\path\fount.bat`" protocolhandle `"%1`""
-
-	try {
-		# 创建目录
-		New-Item -Path "HKCU:\Software\Classes\$protocolName" -Force | Out-Null
-		# 设置协议根键
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "(Default)" -Value $protocolDescription -ErrorAction Stop
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "URL Protocol" -Value "" -ErrorAction Stop
-		# 创建 shell\open\command 子键
-		New-Item -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Force | Out-Null
-		# 设置协议处理命令
-		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Name "(Default)" -Value $command -ErrorAction Stop
-	}
-	catch {
-		Write-Warning "Failed to register fount:// protocol handler: $($_.Exception.Message)"
-	}
-}
-
-# fount Terminal注册
-$WTjsonDirPath = "$env:LOCALAPPDATA/Microsoft/Windows Terminal/Fragments/fount"
-if (!(Test-Path $WTjsonDirPath)) {
-	New-Item -ItemType Directory -Force -Path $WTjsonDirPath
-}
-$WTjsonPath = "$WTjsonDirPath/fount.json"
-$jsonContent = [ordered]@{
-	'$help'   = "https://aka.ms/terminal-documentation"
-	'$schema' = "https://aka.ms/terminal-profiles-schema"
-	profiles  = @(
-		[ordered]@{
-			name              = "fount"
-			commandline       = "fount.bat keepalive"
-			startingDirectory = $FOUNT_DIR
-			icon              = Join-Path $FOUNT_DIR src/public/favicon.ico
-		}
-	)
-} | ConvertTo-Json -Depth 100 -Compress
-if ($jsonContent -ne (Get-Content $WTjsonPath -ErrorAction Ignore)) {
-	Set-Content -Path $WTjsonPath -Value $jsonContent
-}
-
 # Git 安装和更新
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 	Write-Host "Git is not installed, attempting to install..."
@@ -194,7 +149,7 @@ function fount_upgrade {
 	}
 	if (!(Test-Path -Path "$FOUNT_DIR/.git")) {
 		Remove-Item -Path "$FOUNT_DIR/.git-clone" -Recurse -Force -ErrorAction SilentlyContinue
-		New-Item -ItemType Directory -Path "$FOUNT_DIR/.git-clone"
+		New-Item -ItemType Directory -Path "$FOUNT_DIR/.git-clone" | Out-Null
 		git clone https://github.com/steve02081504/fount.git "$FOUNT_DIR/.git-clone" --no-checkout --depth 1 --single-branch
 		if ($LastExitCode) {
 			Remove-Item -Path "$FOUNT_DIR/.git-clone" -Recurse -Force
@@ -265,12 +220,20 @@ else {
 
 # Deno 安装
 if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
+	if (Test-Path "$HOME/.deno/bin/deno.exe") {
+		$env:PATH = $env:PATH + ";$HOME/.deno/bin"
+		[System.Environment]::SetEnvironmentVariable("PATH", [System.Environment]::GetEnvironmentVariable("PATH", "User") + ";$HOME/.deno/bin", [System.EnvironmentVariableTarget]::User)
+	}
+}
+if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 	Write-Host "Deno missing, auto installing..."
 	Invoke-RestMethod https://deno.land/install.ps1 | Invoke-Expression
-	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+	if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
+		$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+	}
 	if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 		Write-Host "Deno installation failed, attempting auto installing to fount's path folder..."
-		$url = "https://github.com/denoland/deno/releases/latest/download/deno-" + (if ($IsWindows) {
+		$url = "https://github.com/denoland/deno/releases/latest/download/deno-" + $(if ($IsWindows) {
 				"x86_64-pc-windows-msvc.zip"
 			} elseif ($IsMacOS) {
 				if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
@@ -356,6 +319,7 @@ if (!(Test-Path -Path "$FOUNT_DIR/node_modules") -or ($args.Count -gt 0 -and $ar
 	if (Test-Path -Path "$FOUNT_DIR/node_modules") {
 		run shutdown
 	}
+	New-Item -Path "$FOUNT_DIR/node_modules" -ItemType Directory -ErrorAction Ignore -Force | Out-Null
 	deno install --reload --allow-scripts --allow-all --node-modules-dir=auto --entrypoint "$FOUNT_DIR/src/server/index.mjs"
 	Write-Host "======================================================" -ForegroundColor Green
 	Write-Warning "DO NOT install any untrusted fount parts on your system, they can do ANYTHING."
@@ -388,6 +352,48 @@ if (!(Test-Path -Path "$FOUNT_DIR/node_modules") -or ($args.Count -gt 0 -and $ar
 	$startMenuShortcut.IconLocation = $shortcutIconLocation
 	$startMenuShortcut.Save()
 	Write-Host "Start Menu shortcut created at $startMenuPath\fount.lnk"
+
+	# fount 协议注册
+	$protocolName = "fount"
+	$protocolDescription = "URL:fount Protocol"
+	# 使用 fount.bat 作为协议处理程序，因为它是Windows上的主入口点
+	$command = "`"$FOUNT_DIR\path\fount.bat`" protocolhandle `"%1`""
+	try {
+		# 创建目录
+		New-Item -Path "HKCU:\Software\Classes\$protocolName" -Force | Out-Null
+		# 设置协议根键
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "(Default)" -Value $protocolDescription -ErrorAction Stop
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "URL Protocol" -Value "" -ErrorAction Stop
+		# 创建 shell\open\command 子键
+		New-Item -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Force | Out-Null
+		# 设置协议处理命令
+		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName\shell\open\command" -Name "(Default)" -Value $command -ErrorAction Stop
+	}
+	catch {
+		Write-Warning "Failed to register fount:// protocol handler: $($_.Exception.Message)"
+	}
+
+	# fount Terminal注册
+	$WTjsonDirPath = "$env:LOCALAPPDATA/Microsoft/Windows Terminal/Fragments/fount"
+	if (!(Test-Path $WTjsonDirPath)) {
+		New-Item -ItemType Directory -Force -Path $WTjsonDirPath | Out-Null
+	}
+	$WTjsonPath = "$WTjsonDirPath/fount.json"
+	$jsonContent = [ordered]@{
+		'$help'   = "https://aka.ms/terminal-documentation"
+		'$schema' = "https://aka.ms/terminal-profiles-schema"
+		profiles  = @(
+			[ordered]@{
+				name              = "fount"
+				commandline       = "fount.bat keepalive"
+				startingDirectory = $FOUNT_DIR
+				icon              = Join-Path $FOUNT_DIR src/public/favicon.ico
+			}
+		)
+	} | ConvertTo-Json -Depth 100 -Compress
+	if ($jsonContent -ne (Get-Content $WTjsonPath -ErrorAction Ignore)) {
+		Set-Content -Path $WTjsonPath -Value $jsonContent
+	}
 }
 
 if ($args.Count -gt 0 -and $args[0] -eq 'geneexe') {
