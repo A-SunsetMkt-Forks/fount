@@ -31,6 +31,7 @@ if (!$auto_installed_pwsh_modules) { $auto_installed_pwsh_modules = '' }
 $auto_installed_pwsh_modules = $auto_installed_pwsh_modules.Split(';') | Where-Object { $_ }
 
 function Test-PWSHModule([string]$ModuleName) {
+	Get-PackageProvider -Name "NuGet" -Force | Out-Null
 	if (!(Get-Module $ModuleName -ListAvailable)) {
 		$auto_installed_pwsh_modules += $ModuleName
 		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
@@ -40,6 +41,11 @@ function Test-PWSHModule([string]$ModuleName) {
 }
 
 if ($args.Count -gt 0 -and $args[0] -eq 'open') {
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	Test-PWSHModule fount-pwsh
 	Start-Job -ScriptBlock {
 		while (-not (Test-FountRunning)) {
@@ -52,6 +58,11 @@ if ($args.Count -gt 0 -and $args[0] -eq 'open') {
 	exit
 }
 elseif ($args.Count -gt 0 -and $args[0] -eq 'background') {
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	Test-PWSHModule ps12exe
 	$TempDir = [System.IO.Path]::GetTempPath()
 	$exepath = Join-Path $TempDir "fount-background.exe"
@@ -63,6 +74,11 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'background') {
 	exit
 }
 elseif ($args.Count -gt 0 -and $args[0] -eq 'protocolhandle') {
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	# 新增 protocolhandle 逻辑
 	$protocolUrl = $args[1]
 	if (-not $protocolUrl) {
@@ -131,10 +147,14 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
 		Set-Content "$FOUNT_DIR/data/installer/auto_installed_winget" '1'
 	}
+	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 	if (Get-Command winget -ErrorAction SilentlyContinue) {
 		winget install --id Git.Git -e --source winget
 		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
 		Set-Content "$FOUNT_DIR/data/installer/auto_installed_git" '1'
+	}
+	else {
+		Write-Host "Failed to install Git because Winget is failed to install, please install it manually."
 	}
 	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 	if (!(Get-Command git -ErrorAction SilentlyContinue)) {
