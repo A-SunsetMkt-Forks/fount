@@ -31,6 +31,7 @@ if (!$auto_installed_pwsh_modules) { $auto_installed_pwsh_modules = '' }
 $auto_installed_pwsh_modules = $auto_installed_pwsh_modules.Split(';') | Where-Object { $_ }
 
 function Test-PWSHModule([string]$ModuleName) {
+	Get-PackageProvider -Name "NuGet" -Force | Out-Null
 	if (!(Get-Module $ModuleName -ListAvailable)) {
 		$auto_installed_pwsh_modules += $ModuleName
 		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
@@ -40,6 +41,11 @@ function Test-PWSHModule([string]$ModuleName) {
 }
 
 if ($args.Count -gt 0 -and $args[0] -eq 'open') {
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	Test-PWSHModule fount-pwsh
 	Start-Job -ScriptBlock {
 		while (-not (Test-FountRunning)) {
@@ -52,6 +58,11 @@ if ($args.Count -gt 0 -and $args[0] -eq 'open') {
 	exit
 }
 elseif ($args.Count -gt 0 -and $args[0] -eq 'background') {
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	Test-PWSHModule ps12exe
 	$TempDir = [System.IO.Path]::GetTempPath()
 	$exepath = Join-Path $TempDir "fount-background.exe"
@@ -63,7 +74,11 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'background') {
 	exit
 }
 elseif ($args.Count -gt 0 -and $args[0] -eq 'protocolhandle') {
-	# 新增 protocolhandle 逻辑
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	$protocolUrl = $args[1]
 	if (-not $protocolUrl) {
 		Write-Error "Error: No URL provided for protocolhandle."
@@ -131,10 +146,14 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
 		Set-Content "$FOUNT_DIR/data/installer/auto_installed_winget" '1'
 	}
+	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 	if (Get-Command winget -ErrorAction SilentlyContinue) {
 		winget install --id Git.Git -e --source winget
 		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
 		Set-Content "$FOUNT_DIR/data/installer/auto_installed_git" '1'
+	}
+	else {
+		Write-Host "Failed to install Git because Winget is failed to install, please install it manually."
 	}
 	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 	if (!(Get-Command git -ErrorAction SilentlyContinue)) {
@@ -235,14 +254,16 @@ if (!(Get-Command deno -ErrorAction SilentlyContinue)) {
 		Write-Host "Deno installation failed, attempting auto installing to fount's path folder..."
 		$url = "https://github.com/denoland/deno/releases/latest/download/deno-" + $(if ($IsWindows) {
 				"x86_64-pc-windows-msvc.zip"
-			} elseif ($IsMacOS) {
+			}
+			elseif ($IsMacOS) {
 				if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
 					"aarch64-apple-darwin.zip"
 				}
 				else {
 					"x86_64-apple-darwin.zip"
 				}
-			} else {
+			}
+			else {
 				"x86_64-unknown-linux-gnu.zip"
 			})
 		Invoke-WebRequest -Uri $url -OutFile "$env:TEMP/deno.zip"
@@ -453,7 +474,7 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'remove') {
 	Write-Host "Uninstalling fount-pwsh..."
 	try { Uninstall-Module -Name fount-pwsh -Scope CurrentUser -Force -ErrorAction Stop } catch {}
 
-	# Remove fount protocol handler (新增)
+	# Remove fount protocol handler
 	if (-not $IN_DOCKER) {
 		Write-Host "Removing fount:// protocol handler..."
 		try {
@@ -526,7 +547,7 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'remove') {
 
 	if (Test-Path "$FOUNT_DIR/data/installer/auto_installed_deno") {
 		Write-Host "Uninstalling Deno..."
-		Remove-Item $(Get-Command deno).Source -Force -ErrorAction Ignore
+		try { Remove-Item $(Get-Command deno).Source -Force } catch {}
 		Remove-Item "~/.deno" -Force -Recurse -ErrorAction Ignore
 	}
 

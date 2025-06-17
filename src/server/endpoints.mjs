@@ -2,11 +2,11 @@ import { login, register, logout, authenticate, getUserByReq, getUserDictionary,
 import { getPartDetails } from './parts_loader.mjs'
 import { generateVerificationCode, verifyVerificationCode } from '../scripts/verifycode.mjs'
 import { ms } from '../scripts/ms.mjs'
-import { getPartList, loadPart, partsList } from './managers/index.mjs'
+import { getLoadedPartList, getPartList, loadPart, partsList } from './managers/index.mjs'
 import { processIPCCommand } from './ipc_server.mjs'
 import { is_local_ip, is_local_ip_from_req, rateLimit } from '../scripts/ratelimit.mjs'
 import { hosturl } from './server.mjs'
-import express from 'npm:express@^5.0.1'
+import express from 'npm:express@^5.1.0'
 import cors from 'npm:cors'
 import { Readable } from 'node:stream'
 import { geti18n, getLocaleData } from '../scripts/i18n.mjs'
@@ -137,6 +137,10 @@ export function registerEndpoints(router) {
 		router.get('/api/getlist/' + part, authenticate, async (req, res) => {
 			const { username } = await getUserByReq(req)
 			res.status(200).json(getPartList(username, part))
+		})
+		router.get('/api/getloadedlist/' + part, authenticate, async (req, res) => {
+			const { username } = await getUserByReq(req)
+			res.status(200).json(getLoadedPartList(username, part))
 		})
 		router.get('/api/getdetails/' + part, authenticate, async (req, res) => {
 			const { username } = await getUserByReq(req)
