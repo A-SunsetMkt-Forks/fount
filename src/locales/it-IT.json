@@ -17,15 +17,14 @@
 		},
 		"ipc": {
 			"sendCommandFailed": "Impossibile inviare il comando: ${error}",
-			"invalidCommand": "Comando non valido, usa \"FOUNT RUN <Type parte> <Nome utente> <Nome parte> <Parametro ...>\"",
-			"runPartLog": "Esegui ${parttype} ${partname} come ${username}, parametro: ${args}",
-			"invokePartLog": "Chiama ${parttype} ${partname} come ${username}, parametro: ${invokedata}",
+			"invalidCommand": "Comando non valido. Usa \"fount run <tipo componente> <Nome utente> <nome componente> <Parametri ...>\".",
+			"runPartLog": "Esecuzione di ${parttype} ${partname} come ${username}, parametri: ${args}.",
+			"invokePartLog": "Chiamata di ${parttype} ${partname} come ${username}, parametri: ${invokedata}.",
 			"unsupportedCommand": "Tipo di comando non supportato.",
 			"processMessageError": "Errore durante l'elaborazione del messaggio IPC: ${error}",
 			"invalidCommandFormat": "Formato comando non valido.",
 			"socketError": "Errore socket: ${error}",
 			"instanceRunning": "Un'altra istanza è già in esecuzione.",
-			"serverStartPrefix": "Avvio server",
 			"serverStarted": "Server IPC avviato.",
 			"parseResponseFailed": "Impossibile analizzare la risposta del server: ${error}",
 			"cannotParseResponse": "Impossibile analizzare la risposta del server.",
@@ -154,7 +153,7 @@
 			"endButton": "Avanti!"
 		},
 		"progressMessages": {
-			"mouseMove": "Prova a muovere il mouse ${mouseIcon} con la mano.",
+			"mouseMove": "Prova a muovere il mouse ${mouseIcon}.",
 			"keyboardPress": "Premi un tasto sulla tua tastiera ${keyboardIcon}.",
 			"mobileTouchMove": "Tocca lo schermo del tuo telefono ${phoneIcon} con un dito e poi trascinalo.",
 			"mobileClick": "Tocca lo schermo del tuo telefono ${phoneIcon} con un dito."
@@ -383,7 +382,7 @@
 		},
 		"errorMessage": {
 			"icon": {
-				"alt": "Messaggio di errore"
+				"alt": "Icona di errore"
 			}
 		},
 		"alerts": {
@@ -514,25 +513,25 @@
 					"title": "Di più"
 				},
 				"moreIcon": {
-					"alt": "Più icone"
+					"alt": "Altre opzioni"
 				}
 			},
 			"dropdown": {
-				"delete": "eliminare",
+				"delete": "Elimina",
 				"deleteIcon": {
-					"alt": "Elimina icona"
+					"alt": "Icona Elimina"
 				},
 				"copyMarkdown": "Copia come Markdown",
 				"copyMarkdownIcon": {
-					"alt": "Copia come icona di Markdown"
+					"alt": "Icona Copia come Markdown"
 				},
 				"copyText": "Copia come testo semplice",
 				"copyTextIcon": {
-					"alt": "Copia icona di testo"
+					"alt": "Icona Copia testo"
 				},
-				"copyHtml": "Copia come html",
+				"copyHtml": "Copia come HTML",
 				"copyHtmlIcon": {
-					"alt": "Copia icona HTML"
+					"alt": "Icona Copia come HTML"
 				}
 			}
 		},
@@ -616,9 +615,9 @@
 		"alerts": {
 			"noChatSelectedForDeletion": "Seleziona le cronologie chat da eliminare.",
 			"noChatSelectedForExport": "Seleziona le cronologie chat da esportare.",
-			"copyError": "Copia non riuscita",
-			"deleteError": "La cancellazione non è riuscita",
-			"exportError": "L'esportazione non è riuscita"
+			"copyError": "Copia non riuscita.",
+			"deleteError": "Eliminazione non riuscita.",
+			"exportError": "Esportazione non riuscita."
 		},
 		"chatItemButtons": {
 			"continue": "Continua",

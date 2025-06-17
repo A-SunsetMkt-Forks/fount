@@ -4,19 +4,20 @@ $FOUNT_DIR = Split-Path -Parent $PSScriptRoot
 # 记录脚本开始时的错误数量，用于最终判断脚本是否成功执行
 $ErrorCount = $Error.Count
 
+# 检测是否为 Windows PowerShell (Desktop Edition)
 if ($PSEdition -eq "Desktop") {
 	try { $IsWindows = $true } catch {}
 }
 
-# Docker 检测
-$IN_DOCKER = $false
+# Docker 环境检测
+$IN_DOCKER = $false # 此处可以根据实际情况（如环境变量）进行更复杂的检测，但当前脚本逻辑中已包含
 
 # 定义安装器数据目录和自动安装标记文件
 $INSTALLER_DATA_DIR = Join-Path $FOUNT_DIR "data/installer"
 $AUTO_INSTALLED_PWSH_MODULES_FILE = Join-Path $INSTALLER_DATA_DIR "auto_installed_pwsh_modules"
 $AUTO_INSTALLED_WINGET_FLAG = Join-Path $INSTALLER_DATA_DIR "auto_installed_winget"
 $AUTO_INSTALLED_GIT_FLAG = Join-Path $INSTALLER_DATA_DIR "auto_installed_git"
-$AUTO_INSTALLED_BUN_FLAG = Join-Path $INSTALLER_DATA_DIR "auto_installed_bun" # 从 Deno 更改为 Bun
+$AUTO_INSTALLED_BUN_FLAG = Join-Path $INSTALLER_DATA_DIR "auto_installed_bun" # 最终使用 Bun
 
 # 初始化已安装的 PowerShell 模块列表
 $auto_installed_pwsh_modules = Get-Content $AUTO_INSTALLED_PWSH_MODULES_FILE -Raw -ErrorAction Ignore
@@ -25,6 +26,8 @@ $auto_installed_pwsh_modules = $auto_installed_pwsh_modules.Split(';') | Where-O
 
 # 函数: 检查并安装 PowerShell 模块，并记录自动安装的模块
 function Test-PWSHModule([string]$ModuleName) {
+	# 确保 NuGet Provider 已安装
+	Get-PackageProvider -Name "NuGet" -Force | Out-Null
 	if (!(Get-Module $ModuleName -ListAvailable)) {
 		Write-Host "PowerShell module '$ModuleName' not found, attempting to install..."
 		# 确保安装器数据目录存在
@@ -49,20 +52,17 @@ function Test-PWSHModule([string]$ModuleName) {
 	return $true
 }
 
-$auto_installed_pwsh_modules = Get-Content "$FOUNT_DIR/data/installer/auto_installed_pwsh_modules" -Raw -ErrorAction Ignore
-if (!$auto_installed_pwsh_modules) { $auto_installed_pwsh_modules = '' }
-$auto_installed_pwsh_modules = $auto_installed_pwsh_modules.Split(';') | Where-Object { $_ }
 
-function Test-PWSHModule([string]$ModuleName) {
-	if (!(Get-Module $ModuleName -ListAvailable)) {
-		$auto_installed_pwsh_modules += $ModuleName
-		New-Item -Path "$FOUNT_DIR/data/installer" -ItemType Directory -Force | Out-Null
-		Set-Content "$FOUNT_DIR/data/installer/auto_installed_pwsh_modules" $($auto_installed_pwsh_modules -join ';')
-		Install-Module -Name $ModuleName -Scope CurrentUser -Force
-	}
-}
+# -- 参数处理逻辑 --
 
+# 处理 'open' 参数：等待服务启动后打开网页
 if ($args.Count -gt 0 -and $args[0] -eq 'open') {
+	# [合并] 如果在 Docker 容器中，直接执行 fount 并退出，不进行桌面集成操作
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	# 确保 fount-pwsh 模块已安装，该模块包含 Test-FountRunning 函数
 	Test-PWSHModule fount-pwsh | Out-Null
 
@@ -121,6 +121,12 @@ if ($args.Count -gt 0 -and $args[0] -eq 'open') {
 }
 # 处理 'background' 参数：在后台启动 fount 进程
 elseif ($args.Count -gt 0 -and $args[0] -eq 'background') {
+	# [合并] 如果在 Docker 容器中，直接执行 fount 并退出
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	# 确保 ps12exe 模块已安装，用于将 PowerShell 脚本编译为可执行文件
 	Test-PWSHModule ps12exe | Out-Null
 
@@ -141,6 +147,12 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'background') {
 }
 # 处理 'protocolhandle' 参数：处理 fount:// 协议链接
 elseif ($args.Count -gt 0 -and $args[0] -eq 'protocolhandle') {
+	# [合并] 如果在 Docker 容器中，直接执行 fount 并退出
+	if ($IN_DOCKER) {
+		$runargs = $args[1..$args.Count]
+		fount @runargs
+		exit
+	}
 	$protocolUrl = $args[1]
 	if (-not $protocolUrl) {
 		Write-Error "Error: No URL provided for protocolhandle."
@@ -209,6 +221,8 @@ elseif ($args.Count -gt 0 -and $args[0] -eq 'protocolhandle') {
 
 # 新建一个背景 job 用于后台更新所需的 PowerShell 模块
 Start-Job -ScriptBlock {
+	param($FOUNT_DIR_JOB, $INSTALLER_DATA_DIR_JOB, $AUTO_INSTALLED_PWSH_MODULES_FILE_JOB)
+
 	@('ps12exe', 'fount-pwsh') | ForEach-Object {
 		# 先获取本地模块的版本号，若是0.0.0则跳过更新（开发版本）
 		$localVersion = (Get-Module $_ -ListAvailable).Version
@@ -216,17 +230,17 @@ Start-Job -ScriptBlock {
 		$latestVersion = (Find-Module $_).Version
 		if ("$latestVersion" -ne "$localVersion") {
 			# 确保安装器数据目录存在
-			New-Item -Path "$PSScriptRoot/data/installer" -ItemType Directory -Force | Out-Null
+			New-Item -Path $INSTALLER_DATA_DIR_JOB -ItemType Directory -Force | Out-Null
 			# 尝试安装模块
 			try {
 				Install-Module -Name $_ -Scope CurrentUser -Force -ErrorAction Stop
 				# 如果安装成功，添加到跟踪列表并保存
-				$auto_installed_pwsh_modules_job = Get-Content "$PSScriptRoot/data/installer/auto_installed_pwsh_modules" -Raw -ErrorAction Ignore
+				$auto_installed_pwsh_modules_job = Get-Content $AUTO_INSTALLED_PWSH_MODULES_FILE_JOB -Raw -ErrorAction Ignore
 				if (!$auto_installed_pwsh_modules_job) { $auto_installed_pwsh_modules_job = '' }
 				$auto_installed_pwsh_modules_job = $auto_installed_pwsh_modules_job.Split(';') | Where-Object { $_ }
 				if ($auto_installed_pwsh_modules_job -notcontains $_) {
 					$auto_installed_pwsh_modules_job += $_
-					Set-Content "$PSScriptRoot/data/installer/auto_installed_pwsh_modules" ($auto_installed_pwsh_modules_job -join ';')
+					Set-Content $AUTO_INSTALLED_PWSH_MODULES_FILE_JOB ($auto_installed_pwsh_modules_job -join ';')
 				}
 			}
 			catch {
@@ -234,22 +248,19 @@ Start-Job -ScriptBlock {
 			}
 		}
 	}
-} -ArgumentList $FOUNT_DIR | Out-Null # 将 $FOUNT_DIR 传递给 Job
+} -ArgumentList $FOUNT_DIR, $INSTALLER_DATA_DIR, $AUTO_INSTALLED_PWSH_MODULES_FILE | Out-Null # 将所需变量传递给 Job
 
 # 向用户的 $Profile 中注册导入 fount-pwsh 模块
-if ($Profile -and (Get-Module fount-pwsh -ListAvailable)) {
-	$ProfileContent = Get-Content $Profile -ErrorAction Ignore
-	$ProfileContent = $ProfileContent -split "`n"
+if ($Profile -and (Test-Path $Profile) -and (Get-Module fount-pwsh -ListAvailable)) {
+	$ProfileContent = Get-Content $Profile -Raw -ErrorAction Ignore
+	$OriginalProfileContent = $ProfileContent
 	# 移除旧的导入语句，防止重复
-	$ProfileContent = $ProfileContent | Where-Object { $_ -notmatch 'Import-Module fount-pwsh' }
-	$ProfileContent = $ProfileContent -join "`n"
+	$ProfileContent = $ProfileContent -replace "(?m)^\s*Import-Module fount-pwsh\s*`r?`n?", ""
 	# 添加新的导入语句
 	$ProfileContent += "`nImport-Module fount-pwsh`n"
-	# 再次清理，防止因换行符问题导致重复
-	$ProfileContent = $ProfileContent -replace '\n+Import-Module fount-pwsh', "`nImport-Module fount-pwsh"
 
 	# 如果内容有变化，则写入文件
-	if ($ProfileContent -ne (Get-Content $Profile -ErrorAction Ignore)) {
+	if ($ProfileContent -ne $OriginalProfileContent) {
 		Set-Content -Path $Profile -Value $ProfileContent
 	}
 }
@@ -277,6 +288,8 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 			Write-Warning "Failed to install Winget: $($_.Exception.Message)"
 		}
 	}
+    # [合并] 刷新PATH环境变量，以确保刚安装的winget可以被找到
+	$env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 
 	# 如果 winget 可用，则使用它安装 Git
 	if (Get-Command winget -ErrorAction SilentlyContinue) {
@@ -290,6 +303,10 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 		catch {
 			Write-Warning "Failed to install Git via Winget: $($_.Exception.Message)"
 		}
+	}
+    # [合并] 添加winget安装失败时的错误提示
+	else {
+		Write-Host "Failed to install Git because Winget is failed to install, please install it manually."
 	}
 
 	# 刷新 PATH 环境变量，确保新安装的 Git 可用
@@ -390,7 +407,7 @@ function fount_upgrade {
 	}
 }
 
-# 检查 .noupdate 文件，跳过 fount 更新
+# 检查 .noupdate 文件，若存在则跳过 fount 更新
 if (Test-Path -Path "$FOUNT_DIR/.noupdate") {
 	Write-Host "Skipping fount update due to .noupdate file."
 }
@@ -398,14 +415,14 @@ else {
 	fount_upgrade
 }
 
-# Bun 安装
-# 如果 Bun 不存在，则安装。
+# [合并] Bun 安装逻辑 (来自 HEAD 分支)
 function install_bun() {
-	# 若没有 bun 但有 $HOME/.bun/env，则尝试 source
+	# 若没有 bun 命令但存在 $HOME/.bun/env，则尝试加载该环境文件
 	if (!(Get-Command bun -ErrorAction SilentlyContinue) -and (Test-Path "$HOME/.bun/env")) {
 		. "$HOME/.bun/env"
 	}
 
+	# 如果 bun 命令仍然不存在，则开始安装
 	if (!(Get-Command bun -ErrorAction SilentlyContinue)) {
 		Write-Host "Bun missing, attempting to install..."
 		# 尝试通过官方脚本安装
@@ -418,6 +435,7 @@ function install_bun() {
 		catch {
 			Write-Warning "Bun installation via official script failed: $($_.Exception.Message). Attempting manual installation to fount's path folder..."
 			# 官方脚本安装失败，尝试手动下载并解压到 fount 的 path 目录
+			# 检测操作系统和架构来确定下载链接
 			$url = "https://github.com/oven-sh/bun/releases/latest/download/bun-" + $(if ($IsWindows) {
 				"windows-x64-baseline.zip"
 			} elseif ($IsMacOS) {
@@ -535,7 +553,7 @@ function run {
 	}
 }
 
-# 安装 fount 依赖
+# 安装 fount 依赖 (首次运行或使用 'init' 参数时)
 if (!(Test-Path -Path "$FOUNT_DIR/data") -or ($args.Count -gt 0 -and $args[0] -eq 'init')) {
 	Write-Host "Installing Fount dependencies..."
 
@@ -549,9 +567,10 @@ if (!(Test-Path -Path "$FOUNT_DIR/data") -or ($args.Count -gt 0 -and $args[0] -e
 
 	$shortcutTargetPath = "powershell.exe"
 	$shortcutArguments = "-noprofile -nologo -ExecutionPolicy Bypass -File `"$FOUNT_DIR\path\fount.ps1`" open keepalive"
+	# 如果 Windows Terminal 存在，则优先使用它
 	if (Test-Path "$env:LOCALAPPDATA/Microsoft/WindowsApps/wt.exe") {
 		$shortcutTargetPath = "$env:LOCALAPPDATA/Microsoft/WindowsApps/wt.exe"
-		$shortcutArguments = "-p fount powershell.exe $shortcutArguments" # Prepend -p fount to existing arguments
+		$shortcutArguments = "-p fount powershell.exe $shortcutArguments" # 在已有参数前添加 -p fount
 	}
 	$shortcutIconLocation = "$FOUNT_DIR\src\public\favicon.ico"
 
@@ -579,7 +598,7 @@ if (!(Test-Path -Path "$FOUNT_DIR/data") -or ($args.Count -gt 0 -and $args[0] -e
 	# 使用 fount.bat 作为协议处理程序，因为它是Windows上的主入口点
 	$command = "`"$FOUNT_DIR\path\fount.bat`" protocolhandle `"%1`""
 	try {
-		# 创建目录
+		# 创建注册表项
 		New-Item -Path "HKCU:\Software\Classes\$protocolName" -Force | Out-Null
 		# 设置协议根键
 		Set-ItemProperty -Path "HKCU:\Software\Classes\$protocolName" -Name "(Default)" -Value $protocolDescription -ErrorAction Stop
@@ -593,7 +612,7 @@ if (!(Test-Path -Path "$FOUNT_DIR/data") -or ($args.Count -gt 0 -and $args[0] -e
 		Write-Warning "Failed to register fount:// protocol handler: $($_.Exception.Message)"
 	}
 
-	# fount Terminal注册
+	# fount Terminal配置文件注册
 	$WTjsonDirPath = "$env:LOCALAPPDATA/Microsoft/Windows Terminal/Fragments/fount"
 	if (!(Test-Path $WTjsonDirPath)) {
 		New-Item -ItemType Directory -Force -Path $WTjsonDirPath | Out-Null
@@ -611,7 +630,7 @@ if (!(Test-Path -Path "$FOUNT_DIR/data") -or ($args.Count -gt 0 -and $args[0] -e
 			}
 		)
 	} | ConvertTo-Json -Depth 100 -Compress
-	if ($jsonContent -ne (Get-Content $WTjsonPath -ErrorAction Ignore)) {
+	if ($jsonContent -ne (Get-Content $WTjsonPath -Raw -ErrorAction Ignore)) {
 		Set-Content -Path $WTjsonPath -Value $jsonContent
 	}
 }
@@ -631,7 +650,7 @@ if ($args.Count -gt 0) {
 			exit $LASTEXITCODE
 		}
 		'init' {
-			# 'init' 参数已在依赖安装部分处理，这里直接退出
+			# 'init' 参数已在上面的依赖安装部分处理，这里直接退出即可
 			exit 0
 		}
 		'keepalive' {
@@ -645,6 +664,7 @@ if ($args.Count -gt 0) {
 				run @runargs
 			}
 		}
+		# [合并] 使用 HEAD 分支更完整的卸载逻辑
 		'remove' {
 			Write-Host "Initiating fount uninstallation..."
 			run shutdown # 尝试关闭 fount 进程

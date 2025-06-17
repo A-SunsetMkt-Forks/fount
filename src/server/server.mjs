@@ -1,5 +1,5 @@
 // import * as Sentry from '@sentry/bun'
-import express from 'npm:express@^5.0.1'
+import express from 'npm:express@^5.1.0'
 import cookieParser from 'npm:cookie-parser@^1.4.0'
 import fileUpload from 'npm:express-fileupload@^1.5.0'
 import fs from 'node:fs'
@@ -15,10 +15,11 @@ import { StartRPC } from '../scripts/discordrpc.mjs'
 import { geti18n } from '../scripts/i18n.mjs'
 import { sentrytunnel } from '../scripts/sentrytunnel.mjs'
 import { partsList } from './managers/index.mjs'
-import { Router as WsAbleRouter } from 'npm:websocket-express'
+import { Router as WsAbleRouter } from 'npm:websocket-express@^3.1.3'
 import { ReStartJobs } from './jobs.mjs'
 import { startTimerHeartbeat } from './timers.mjs'
 import supportsAnsi from 'npm:supports-ansi'
+import { loadJsonFile, saveJsonFile } from '../scripts/json_loader.mjs'
 
 export { __dirname }
 const app = express()
@@ -47,16 +48,6 @@ mainRouter.use((req, res, next) => {
 	if (req.accepts('html')) res.set('Document-Policy', 'js-profiling')
 	return next()
 })
-FinalRouter.use((req, res) => {
-	if (req.accepts('html')) return res.status(404).sendFile(__dirname + '/src/public/404.html')
-	res.status(404).type('txt').send('Not found')
-})
-const errorHandler = (err, req, res, next) => {
-	// Sentry.captureException(err)
-	console.error(err)
-	res.status(500).json({ message: 'Internal Server Error', errors: err.errors, error: err.message })
-}
-FinalRouter.use(errorHandler)
 
 const PartsRouters = {}
 const partsAPIregex = new RegExp(`^/(api|ws)/(${partsList.join('|')})/`)
@@ -70,7 +61,6 @@ PartsRouter.use(async (req, res, next) => {
 		return PartsRouters[username][parttype][partname](req, res, next)
 	return next()
 })
-PartsRouter.use(errorHandler)
 export function getPartRouter(username, parttype, partname) {
 	PartsRouters[username] ??= {}
 	PartsRouters[username][parttype] ??= {}
@@ -82,6 +72,18 @@ export function deletePartRouter(username, parttype, partname) {
 	if (!Object.keys(PartsRouters[username][parttype]).length) delete PartsRouters[username][parttype]
 	if (!Object.keys(PartsRouters[username]).length) delete PartsRouters[username]
 }
+FinalRouter.use((req, res) => {
+	if (req.accepts('html')) return res.status(404).sendFile(__dirname + '/src/public/404.html')
+	res.status(404).type('txt').send('Not found')
+})
+const errorHandler = (err, req, res, next) => {
+	// Sentry.captureException(err)
+	console.error(err)
+	res.status(500).json({ message: 'Internal Server Error', errors: err.errors, error: err.message })
+}
+PartsRouter.use(errorHandler)
+FinalRouter.use(errorHandler)
+app.use(errorHandler)
 
 function get_config() {
 	if (!fs.existsSync(__dirname + '/data/config.json')) {
@@ -89,10 +91,10 @@ function get_config() {
 		fs.copyFileSync(__dirname + '/default/config.json', __dirname + '/data/config.json')
 	}
 
-	return JSON.parse(fs.readFileSync(__dirname + '/data/config.json', 'utf8'))
+	return loadJsonFile(__dirname + '/data/config.json')
 }
 export function save_config() {
-	fs.writeFileSync(__dirname + '/data/config.json', JSON.stringify(config, null, '\t'))
+	saveJsonFile(__dirname + '/data/config.json', config)
 }
 
 //读取confing文件
