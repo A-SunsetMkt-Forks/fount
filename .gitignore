@@ -5,6 +5,7 @@
 /.idea
 /.noupdate
 /data/
+/.vm_data_*
 /node_modules
 /path/bun
 /path/bun.exe
