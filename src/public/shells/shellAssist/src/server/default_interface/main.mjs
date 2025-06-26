@@ -27,6 +27,7 @@ export function GetDefaultShellAssistInterface(char_API, char_name) {
 	 * 		content: string
 	 * 	})[]
 	 *  pwd: string
+	 *  screen: string
 	 * 	command_now: string
 	 * 	command_output: string
 	 * 	command_error: string
@@ -77,6 +78,12 @@ stderr: ${entry.error.includes('\n') ? '\n```\n' + entry.error + '\n```' : '`' +
 `
 		if (args.command_error) user_doing_now += `\
 错误信息：\`${args.command_error}\`
+`
+		if (args.screen) user_doing_now += `\
+屏幕内容：
+\`\`\`
+${args.screen}
+\`\`\`
 `
 		if (args.rejected_commands.length) user_doing_now += `\
 用户已拒绝的命令：\`${args.rejected_commands.join('`, `')}\`
