@@ -17,7 +17,7 @@
 		},
 		"ipc": {
 			"sendCommandFailed": "कमांड भेजने में विफल: ${error}",
-			"invalidCommand": "अमान्य कमांड, कृपया \"fount run <घटक प्रकार> <उपयोगकर्ता नाम> <घटक नाम> <पैरामीटर...>\u200c\" का उपयोग करें",
+			"invalidCommand": "अमान्य कमांड, कृपया \"fount run <घटक प्रकार> <उपयोगकर्ता नाम> <घटक नाम> <पैरामीटर...>‌\" का उपयोग करें",
 			"runPartLog": "${username} के रूप में ${parttype} ${partname} चलाएँ, पैरामीटर: ${args}",
 			"invokePartLog": "${username} के रूप में ${parttype} ${partname} कॉल करें, पैरामीटर: ${invokedata}",
 			"unsupportedCommand": "असमर्थित कमांड प्रकार",
