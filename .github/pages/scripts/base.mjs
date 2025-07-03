@@ -28,12 +28,12 @@ export let theme_now
 export function setTheme(theme) {
 	if (theme === theme_now) return
 	theme_now = theme
-	localStorage.setItem('theme', theme)
+	localStorage.setItem('fountTheme', theme)
 	if (theme === 'auto') theme = null
 	theme ||= Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'
 	if (document.documentElement.dataset.theme !== theme) document.documentElement.setAttribute('data-theme', theme)
 }
-setTheme(urlParams.get('theme') ?? localStorage.getItem('theme') ?? 'dark')
+setTheme(urlParams.get('theme') ?? localStorage.getItem('fountTheme') ?? 'dark')
 
 export function setPreRender(hostUrl = urlParams.get('hostUrl') ?? localStorage.getItem('fountHostUrl') ?? 'http://localhost:8931') {
 	if (HTMLScriptElement.supports?.('speculationrules')) {
